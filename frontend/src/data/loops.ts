@@ -2,7 +2,7 @@ import type { LoopPlan } from "@/lib/types";
 
 export const demoLoop: LoopPlan = {
   id: "soho-afternoon",
-  neighborhood: "SoHo",
+  neighborhood: "Nearby",
   totalMinutes: 155,
   estimatedCostMin: 8,
   estimatedCostMax: 18,

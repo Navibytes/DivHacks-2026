@@ -1,10 +1,4 @@
-export type PlaceCategory =
-  | "coffee"
-  | "food"
-  | "books"
-  | "art"
-  | "outdoors"
-  | "event";
+export type PlaceCategory = string;
 
 export type PlaceKind = "saved" | "event" | "find";
 
@@ -27,15 +21,17 @@ export type VibeOption =
 export interface Place {
   id: string;
   name: string;
-  neighborhood: string;
+  neighborhood: string | null;
   category: PlaceCategory;
-  distance: string;
-  estimatedCost: number;
+  distance: string | null;
+  estimatedCost: number | null;
+  priceLevel: number | null;
   saved: boolean;
   source: PlaceSource;
   lat: number;
   lng: number;
-  image: string;
+  image: string | null;
+  link: string | null;
   kind: PlaceKind;
 }
 

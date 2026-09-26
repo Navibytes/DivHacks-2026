@@ -1,4 +1,5 @@
 import { AddToLoopButton } from "@/components/AddToLoopButton";
+import { PlaceImage } from "@/components/PlaceImage";
 import { categoryLabel, statusLabel } from "@/data/places";
 import type { Place } from "@/lib/types";
 
@@ -26,13 +27,12 @@ export function MapBottomSheet({
         <span className="mx-auto block h-1 w-10 rounded-full bg-line" />
       </button>
       <div className="flex gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={place.image} alt={place.name} className="h-20 w-20 shrink-0 rounded-[12px] object-cover" />
+        <PlaceImage place={place} alt={place.name} className="h-20 w-20 shrink-0 rounded-[12px] object-cover" />
         <div className="min-w-0">
           <p className="text-[12px] font-semibold text-red">{statusLabel(place)}</p>
           <h2 className="mt-0.5 truncate text-[18px] font-bold text-ink">{place.name}</h2>
           <p className="mt-1 text-[13px] text-muted">
-            {place.neighborhood} · {place.distance} · {categoryLabel(place.category)}
+            {[place.neighborhood, place.distance, categoryLabel(place.category)].filter(Boolean).join(" · ")}
           </p>
         </div>
       </div>

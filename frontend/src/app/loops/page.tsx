@@ -5,22 +5,24 @@ import { useState } from "react";
 import { Loopie } from "@/components/Loopie";
 import { LoopStop } from "@/components/LoopStop";
 import { formatLoopTime } from "@/data/loops";
-import { getPlace } from "@/data/places";
 import { usePlan } from "@/lib/plan-store";
+import { usePlaces } from "@/lib/places-store";
 import type { Place } from "@/lib/types";
 
 export default function LoopsPage() {
   const { loop } = usePlan();
+  const { places } = usePlaces();
   // null = not started; otherwise the index of the stop you're at.
   const [current, setCurrent] = useState<number | null>(null);
 
   const stops = loop.stops
-    .map((stop) => ({ stop, place: getPlace(stop.placeId) }))
+    .map((stop) => ({ stop, place: places.find((place) => place.id === stop.placeId) }))
     .filter((item): item is { stop: (typeof loop.stops)[number]; place: Place } =>
       Boolean(item.place),
     );
 
   const finished = current !== null && current >= stops.length;
+  const loopArea = loop.neighborhood || "Nearby";
   const message =
     current === null
       ? "Your loop is ready."
@@ -39,7 +41,7 @@ export default function LoopsPage() {
           ← Edit plan
         </Link>
         <h1 className="mt-3 text-[28px] font-extrabold tracking-tight text-ink">Your Loop</h1>
-        <p className="mt-3 text-[18px] font-semibold text-ink">{loop.neighborhood}</p>
+        <p className="mt-3 text-[18px] font-semibold text-ink">{loopArea}</p>
         <p className="mt-1 text-[14px] text-muted">
           {formatLoopTime(loop.totalMinutes)} · ${loop.estimatedCostMax} estimated
         </p>

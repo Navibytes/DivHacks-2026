@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useMemo, useState } from "react";
 import { demoLoop } from "@/data/loops";
-import { getPlace, savedPlaces, statusLabel } from "@/data/places";
+import { statusLabel } from "@/data/places";
 import { requestLoop } from "@/lib/api";
+import { usePlaces } from "@/lib/places-store";
 import { formatClock, parseClock } from "@/lib/time";
 import type {
   BudgetOption,
@@ -37,12 +38,14 @@ const WALK_MINUTES_GUESS = 8;
 const VISIT_MINUTES_GUESS = 40;
 
 export function PlanProvider({ children }: { children: React.ReactNode }) {
-  const [locationMode, setLocationMode] = useState<LocationMode | null>(null);
-  const [neighborhood, setNeighborhood] = useState("SoHo");
+  const { places } = usePlaces();
+  const savedPlaces = useMemo(() => places.filter((place) => place.saved), [places]);
+  const [locationMode, setLocationMode] = useState<LocationMode | null>("gps");
+  const [neighborhood, setNeighborhood] = useState("Nearby");
   const [timeHours, setTimeHours] = useState<TimeOption | null>(null);
   const [budget, setBudget] = useState<BudgetOption | null>(null);
   const [vibes, setVibes] = useState<VibeOption[]>([]);
-  const [loop, setLoop] = useState<LoopPlan>(demoLoop);
+  const [loop, setLoop] = useState<LoopPlan>({ ...demoLoop, neighborhood: "Nearby" });
   const [isPlanning, setIsPlanning] = useState(false);
 
   const value = useMemo<PlanState>(
@@ -54,7 +57,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       vibes,
       loop,
       isPlanning,
-      setLocation: (mode, nextNeighborhood = "SoHo") => {
+      setLocation: (mode, nextNeighborhood = "Nearby") => {
         setLocationMode(mode);
         setNeighborhood(nextNeighborhood);
       },
@@ -77,7 +80,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         );
         const [apiLoop] = await Promise.all([
           requestLoop({
-            locationMode: locationMode ?? "neighborhood",
+            locationMode: locationMode ?? "gps",
             neighborhood,
             timeHours: timeHours ?? 2,
             budget: budget ?? "any",
@@ -90,7 +93,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         setIsPlanning(false);
       },
       addToLoop: (placeId) => {
-        const place = getPlace(placeId);
+        const place = places.find((item) => item.id === placeId);
         if (!place || loop.stops.some((stop) => stop.placeId === placeId)) return;
         const last = loop.stops[loop.stops.length - 1];
         const start = last
@@ -99,7 +102,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         setLoop({
           ...loop,
           totalMinutes: loop.totalMinutes + VISIT_MINUTES_GUESS + WALK_MINUTES_GUESS,
-          estimatedCostMax: loop.estimatedCostMax + place.estimatedCost,
+          estimatedCostMax: loop.estimatedCostMax + (place.estimatedCost ?? 0),
           stops: [
             ...loop.stops,
             {
@@ -115,7 +118,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       },
       isInLoop: (placeId) => loop.stops.some((stop) => stop.placeId === placeId),
     }),
-    [locationMode, neighborhood, timeHours, budget, vibes, loop, isPlanning],
+    [locationMode, neighborhood, timeHours, budget, vibes, loop, isPlanning, places, savedPlaces],
   );
 
   return <PlanContext.Provider value={value}>{children}</PlanContext.Provider>;

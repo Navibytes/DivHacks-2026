@@ -1,4 +1,5 @@
 import { categoryLabel, costLabel } from "@/data/places";
+import { PlaceImage } from "@/components/PlaceImage";
 import type { LoopStop as LoopStopType, Place } from "@/lib/types";
 
 export function LoopStop({
@@ -38,8 +39,7 @@ export function LoopStop({
             status === "current" ? "border-red" : "border-line"
           } ${status === "done" ? "opacity-60" : ""}`}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={place.image} alt="" className="h-16 w-16 shrink-0 rounded-[12px] object-cover" />
+          <PlaceImage place={place} alt="" className="h-16 w-16 shrink-0 rounded-[12px] object-cover" />
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
               <h3 className="text-[16px] font-semibold leading-snug text-ink">
@@ -52,7 +52,7 @@ export function LoopStop({
               {status === "current" ? "Up next" : stop.reason}
             </p>
             <p className="mt-1.5 text-[13px] text-muted">
-              {categoryLabel(place.category)} · {costLabel(place.estimatedCost)} · {stop.duration} min
+              {categoryLabel(place.category)} · {costLabel(place.estimatedCost, place.priceLevel)} · {stop.duration} min
             </p>
           </div>
         </article>

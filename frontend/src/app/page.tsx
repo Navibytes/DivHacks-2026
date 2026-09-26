@@ -8,11 +8,9 @@ import { PlaceCard } from "@/components/PlaceCard";
 import { PlaceDetails } from "@/components/PlaceDetails";
 import { PlanningOverlay } from "@/components/PlanningOverlay";
 import { SectionHeader } from "@/components/SectionHeader";
-import { nearbySaved } from "@/data/places";
 import { usePlan } from "@/lib/plan-store";
+import { placesMessage, usePlaces } from "@/lib/places-store";
 import type { BudgetOption, Place, TimeOption, VibeOption } from "@/lib/types";
-
-const neighborhoods = ["SoHo", "West Village", "East Village", "Williamsburg"];
 
 const timeOptions: { value: TimeOption; label: string }[] = [
   { value: 1, label: "1 hr" },
@@ -40,7 +38,8 @@ const vibeOptions: { value: VibeOption; label: string }[] = [
 export default function HomePage() {
   const router = useRouter();
   const plan = usePlan();
-  const [showNeighborhoods, setShowNeighborhoods] = useState(false);
+  const { places, isLoading, error } = usePlaces();
+  const nearbySaved = places.filter((place) => place.saved).slice(0, 3);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
   async function onBuild() {
@@ -70,52 +69,8 @@ export default function HomePage() {
         <Loopie state="idle" size={72} />
       </header>
 
-      <section className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              plan.setLocation("gps", "SoHo");
-              setShowNeighborhoods(false);
-            }}
-            className={`rounded-[16px] border px-3 py-3 text-[13px] font-semibold ${
-              plan.locationMode === "gps"
-                ? "border-red bg-soft text-red"
-                : "border-line bg-paper text-ink"
-            }`}
-          >
-            Use my location
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setShowNeighborhoods(true);
-              plan.setLocation("neighborhood", plan.neighborhood);
-            }}
-            className={`rounded-[16px] border px-3 py-3 text-[13px] font-semibold ${
-              plan.locationMode === "neighborhood"
-                ? "border-red bg-soft text-red"
-                : "border-line bg-paper text-ink"
-            }`}
-          >
-            Choose neighborhood
-          </button>
-        </div>
-        {plan.locationMode === "gps" ? (
-          <p className="text-[13px] text-muted">Using SoHo as your current area.</p>
-        ) : null}
-        {showNeighborhoods || plan.locationMode === "neighborhood" ? (
-          <div className="flex flex-wrap gap-2">
-            {neighborhoods.map((name) => (
-              <FilterChip
-                key={name}
-                label={name}
-                selected={plan.neighborhood === name}
-                onClick={() => plan.setLocation("neighborhood", name)}
-              />
-            ))}
-          </div>
-        ) : null}
+      <section className="rounded-[16px] border border-line bg-paper px-4 py-3">
+        <p className="text-[13px] font-semibold text-ink">Using nearby locations</p>
       </section>
 
       <section className="space-y-3">
@@ -170,6 +125,11 @@ export default function HomePage() {
 
       <section className="space-y-3">
         <SectionHeader title="Saved near you" />
+        {placesMessage({ isLoading, error }) ? (
+          <p role={error ? "alert" : "status"} className="text-[14px] text-muted">
+            {placesMessage({ isLoading, error })}
+          </p>
+        ) : null}
         <div className="space-y-3">
           {nearbySaved.map((place) => (
             <PlaceCard
@@ -179,6 +139,9 @@ export default function HomePage() {
               onClick={() => setSelectedPlace(place)}
             />
           ))}
+          {!isLoading && !error && nearbySaved.length === 0 ? (
+            <p className="text-[14px] text-muted">No saved locations yet.</p>
+          ) : null}
         </div>
       </section>
     </div>

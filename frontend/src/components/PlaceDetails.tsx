@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { AddToLoopButton } from "@/components/AddToLoopButton";
+import { PlaceImage } from "@/components/PlaceImage";
 import { categoryLabel, costLabel, sourceLabel, statusLabel } from "@/data/places";
 import type { Place } from "@/lib/types";
 
@@ -31,8 +32,7 @@ export function PlaceDetails({
         className="sheet-in w-full max-w-[430px] rounded-t-[20px] bg-paper p-4 pb-[max(16px,env(safe-area-inset-bottom))]"
       >
         <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={place.image} alt={place.name} className="h-44 w-full rounded-[16px] object-cover" />
+          <PlaceImage place={place} alt={place.name} className="h-44 w-full rounded-[16px] object-cover" />
           <button
             type="button"
             onClick={onClose}
@@ -50,9 +50,11 @@ export function PlaceDetails({
         <h2 id="place-title" className="mt-1 text-[22px] font-bold tracking-tight text-ink">
           {place.name}
         </h2>
-        <p className="mt-1 text-[14px] text-muted">
-          {place.neighborhood} · {place.distance}
-        </p>
+        {place.neighborhood || place.distance ? (
+          <p className="mt-1 text-[14px] text-muted">
+            {[place.neighborhood, place.distance].filter(Boolean).join(" · ")}
+          </p>
+        ) : null}
 
         <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[13px]">
           <div>
@@ -60,12 +62,23 @@ export function PlaceDetails({
             <dd className="mt-1 font-semibold text-ink">{categoryLabel(place.category)}</dd>
           </div>
           <div>
-            <dt className="text-muted">Cost</dt>
-            <dd className="mt-1 font-semibold text-ink">{costLabel(place.estimatedCost)}</dd>
+              <dt className="text-muted">{place.estimatedCost === null ? "Price level" : "Estimated cost"}</dt>
+            <dd className="mt-1 font-semibold text-ink">{costLabel(place.estimatedCost, place.priceLevel)}</dd>
           </div>
         </dl>
         {sourceLabel(place.source) ? (
           <p className="mt-3 text-[12px] text-muted">{sourceLabel(place.source)}</p>
+        ) : null}
+
+        {place.link ? (
+          <a
+            href={place.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex rounded-[12px] border border-line px-4 py-2 text-[14px] font-semibold text-ink"
+          >
+            Open link
+          </a>
         ) : null}
 
         <AddToLoopButton placeId={place.id} className="mt-5 w-full" />

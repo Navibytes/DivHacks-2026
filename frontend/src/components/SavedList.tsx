@@ -5,12 +5,14 @@ import { FilterChip } from "@/components/FilterChip";
 import { PlaceCard } from "@/components/PlaceCard";
 import { PlaceDetails } from "@/components/PlaceDetails";
 import { ViewToggle } from "@/components/ViewToggle";
-import { savedPlaces } from "@/data/places";
+import { placesMessage, usePlaces } from "@/lib/places-store";
 import type { Place } from "@/lib/types";
 
 const filters = ["All", "Food", "Coffee", "Arts"] as const;
 
 export function SavedList({ onShowMap }: { onShowMap: () => void }) {
+  const { places: allPlaces, isLoading, error } = usePlaces();
+  const savedPlaces = useMemo(() => allPlaces.filter((place) => place.saved), [allPlaces]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
   const [selected, setSelected] = useState<Place | null>(null);
@@ -24,7 +26,7 @@ export function SavedList({ onShowMap }: { onShowMap: () => void }) {
       if (filter === "Arts") return place.category === "art" || place.category === "books";
       return true;
     });
-  }, [query, filter]);
+  }, [query, filter, savedPlaces]);
 
   return (
     <div className="space-y-5">
@@ -56,10 +58,15 @@ export function SavedList({ onShowMap }: { onShowMap: () => void }) {
         ))}
       </div>
       <div className="space-y-3">
+        {placesMessage({ isLoading, error }) ? (
+          <p role={error ? "alert" : "status"} className="text-[14px] text-muted">
+            {placesMessage({ isLoading, error })}
+          </p>
+        ) : null}
         {places.map((place) => (
           <PlaceCard key={place.id} place={place} onClick={() => setSelected(place)} />
         ))}
-        {places.length === 0 ? (
+        {!isLoading && !error && places.length === 0 ? (
           <p className="text-[14px] text-muted">No saved spots match that search.</p>
         ) : null}
       </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FilterChip } from "@/components/FilterChip";
 import { PlaceCard } from "@/components/PlaceCard";
 import { PlaceDetails } from "@/components/PlaceDetails";
-import { newFinds } from "@/data/places";
+import { placesMessage, usePlaces } from "@/lib/places-store";
 import type { Place } from "@/lib/types";
 
 const filters = [
@@ -14,9 +14,11 @@ const filters = [
 ] as const;
 
 export default function NewFindsPage() {
+  const { places, isLoading, error } = usePlaces();
   const [filter, setFilter] = useState<(typeof filters)[number]["id"]>("all");
   const [selected, setSelected] = useState<Place | null>(null);
 
+  const newFinds = places.filter((place) => !place.saved);
   const shown = newFinds.filter((place) => filter === "all" || place.kind === filter);
 
   return (
@@ -39,6 +41,11 @@ export default function NewFindsPage() {
         ))}
       </div>
       <div className="space-y-3">
+        {placesMessage({ isLoading, error }) ? (
+          <p role={error ? "alert" : "status"} className="text-[14px] text-muted">
+            {placesMessage({ isLoading, error })}
+          </p>
+        ) : null}
         {shown.map((place) => (
           <PlaceCard
             key={place.id}
@@ -47,7 +54,7 @@ export default function NewFindsPage() {
             onClick={() => setSelected(place)}
           />
         ))}
-        {shown.length === 0 ? (
+        {!isLoading && !error && shown.length === 0 ? (
           <p className="text-[14px] text-muted">Nothing new here right now.</p>
         ) : null}
       </div>
