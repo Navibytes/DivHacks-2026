@@ -6,7 +6,7 @@ import { DirectionsIcon, PlaceFacts, directionsUrl } from "@/components/PlaceFac
 import { VideoPreview } from "@/components/VideoPreview";
 import { VideoSheet } from "@/components/VideoSheet";
 import { categoryLabel, sourceLabel, statusLabel } from "@/data/places";
-import { platformName } from "@/lib/video";
+import { videoCredit } from "@/lib/video";
 import type { Place } from "@/lib/types";
 
 export function PlaceDetails({
@@ -74,7 +74,7 @@ export function PlaceDetails({
         <p className="mt-3 text-[12px] text-muted">
           Found on{" "}
           {place.video
-            ? `${platformName(place.video)} · ${place.video.creator}`
+            ? videoCredit(place.video)
             : (sourceLabel(place.source)?.replace("Saved from ", "") ?? "LocalLoop")}
         </p>
 

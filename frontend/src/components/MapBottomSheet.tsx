@@ -7,7 +7,7 @@ import { WatchVideoButton } from "@/components/PlaceDetails";
 import { VideoPreview } from "@/components/VideoPreview";
 import { VideoSheet } from "@/components/VideoSheet";
 import { categoryLabel, statusLabel } from "@/data/places";
-import { platformName } from "@/lib/video";
+import { videoCredit } from "@/lib/video";
 import type { Place } from "@/lib/types";
 
 export function MapBottomSheet({
@@ -45,7 +45,7 @@ export function MapBottomSheet({
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-red">
             {place.video
-              ? `From ${place.video.creator} on ${platformName(place.video)}`
+              ? `From ${videoCredit(place.video)}`
               : statusLabel(place)}
           </p>
           <button

@@ -31,6 +31,7 @@ export type VibeOption =
 export interface SourceVideo {
   platform: "tiktok" | "instagram";
   url: string;
+  /** "@handle", or "" when the link doesn't say (Instagram links don't). */
   creator: string;
 }
 

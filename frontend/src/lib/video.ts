@@ -12,7 +12,7 @@ export function videoFromLink(link: string): SourceVideo | undefined {
     return { platform: "tiktok", url: link.trim(), creator: `@${tiktok[1]}` };
   }
   if (INSTAGRAM.test(link)) {
-    return { platform: "instagram", url: link.trim(), creator: "Instagram post" };
+    return { platform: "instagram", url: link.trim(), creator: "" };
   }
   return undefined;
 }
@@ -32,4 +32,9 @@ export function embedUrl(video: SourceVideo) {
 
 export function platformName(video: SourceVideo) {
   return video.platform === "tiktok" ? "TikTok" : "Instagram";
+}
+
+/** "@handle on TikTok", or just "Instagram" when the creator is unknown. */
+export function videoCredit(video: SourceVideo, joiner = " on ") {
+  return video.creator ? `${video.creator}${joiner}${platformName(video)}` : platformName(video);
 }

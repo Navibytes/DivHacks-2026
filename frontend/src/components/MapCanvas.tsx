@@ -6,7 +6,7 @@ import type { LayerGroup, Map as LeafletMap } from "leaflet";
 import { categoryLabel, statusLabel } from "@/data/places";
 import type { Place } from "@/lib/types";
 import { recoloredOsmLayer } from "@/lib/map-tiles";
-import { platformName } from "@/lib/video";
+import { videoCredit } from "@/lib/video";
 
 type Leaflet = typeof import("leaflet");
 type MapParts = { leaflet: Leaflet; map: LeafletMap; layer: LayerGroup };
@@ -133,7 +133,7 @@ function escapeHtml(text: string) {
 // Small card shown when hovering a pin: photo, what it is, where it came from.
 function previewHtml(place: Place) {
   const source = place.video
-    ? `&#9654; ${escapeHtml(place.video.creator)} · ${platformName(place.video)}`
+    ? `&#9654; ${escapeHtml(videoCredit(place.video, " · "))}`
     : escapeHtml(statusLabel(place));
   const description = place.description
     ? `<p class="pt-desc">${escapeHtml(place.description)}</p>`
