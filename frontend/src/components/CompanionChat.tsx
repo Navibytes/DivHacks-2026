@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Loopie } from "@/components/Loopie";
 import { formatLoopTime } from "@/data/loops";
-import { categoryLabel, costLabel } from "@/data/places";
+import { categoryLabel, priceLabel } from "@/data/places";
 import {
   budgetChoices,
   detectIntent,
@@ -40,11 +40,14 @@ const GREETING = "Hi, I’m Loopie, your NYC guide! Want me to plan something, o
 
 export function CompanionChat({
   hidden,
+  question,
   onClose,
   onSelectPlace,
   onShowRoute,
 }: {
   hidden: boolean;
+  /** A question sent from elsewhere (the map search). A new `id` sends it again. */
+  question?: { id: number; text: string };
   onClose: () => void;
   onSelectPlace: (place: Place) => void;
   onShowRoute: () => void;
@@ -130,11 +133,15 @@ export function CompanionChat({
     setStep("start");
   }
 
-  async function onSend(event: React.FormEvent) {
+  function onSend(event: React.FormEvent) {
     event.preventDefault();
     const text = draft.trim();
     if (!text || step === "building" || typing) return;
     setDraft("");
+    void sendText(text);
+  }
+
+  async function sendText(text: string) {
     add({ from: "user", text });
 
     if (step === "time" || step === "people" || step === "budget") {
@@ -167,6 +174,18 @@ export function CompanionChat({
     if (intent) runIntent(intent);
     else loopieSays({ text: "I’m still learning to chat! Try one of these:" });
   }
+
+  // Questions from the map search bar. The ref always holds the latest
+  // sendText, and the timeout keeps the state updates out of the effect body.
+  const sendTextRef = useRef<(text: string) => Promise<void>>(async () => {});
+  useEffect(() => {
+    sendTextRef.current = sendText;
+  });
+  useEffect(() => {
+    if (!question) return;
+    const timer = setTimeout(() => void sendTextRef.current(question.text), 0);
+    return () => clearTimeout(timer);
+  }, [question]);
 
   let choices: { key: string; label: string; onPick: () => void }[] = [];
   if (step === "start") {
@@ -253,7 +272,7 @@ export function CompanionChat({
                         <span className="min-w-0">
                           <span className="block truncate text-[13px] font-semibold text-ink">{place.name}</span>
                           <span className="block text-[12px] text-muted">
-                            {categoryLabel(place.category)} · {place.distance} · {costLabel(place.estimatedCost)}
+                            {categoryLabel(place.category)} · {place.distance} · {priceLabel(place)}
                           </span>
                         </span>
                       </button>

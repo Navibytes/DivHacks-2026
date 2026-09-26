@@ -1,5 +1,5 @@
 import type { Place } from "@/lib/types";
-import { categoryLabel, costLabel, sourceLabel, statusLabel } from "@/data/places";
+import { categoryLabel, priceLabel, sourceLabel, statusLabel } from "@/data/places";
 
 export function PlaceCard({
   place,
@@ -42,7 +42,7 @@ export function PlaceCard({
         ) : variant === "find" ? (
           <>
             <p className="mt-2 text-[12px] text-muted">
-              {categoryLabel(place.category)} · {costLabel(place.estimatedCost)}
+              {categoryLabel(place.category)} · {priceLabel(place)}
             </p>
             <p className="mt-1 text-[12px] font-semibold text-red">{statusLabel(place)}</p>
           </>

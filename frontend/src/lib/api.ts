@@ -42,6 +42,10 @@ export async function requestSpotFromLink(link: string): Promise<Place | null> {
   }
 }
 
+// Gemini usually answers in a few seconds but occasionally takes much longer;
+// past this, Loopie falls back to its scripted answers instead of hanging.
+const LOOPIE_TIMEOUT_MS = 12_000;
+
 /** Ask Loopie (Gemini, via our own /api/chat route). Null means "use the scripted fallback". */
 export async function askLoopie(body: AiChatRequest): Promise<AiChatReply | null> {
   try {
@@ -49,6 +53,7 @@ export async function askLoopie(body: AiChatRequest): Promise<AiChatReply | null
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(LOOPIE_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     return (await res.json()) as AiChatReply;

@@ -18,12 +18,15 @@ export function MapCanvas({
   places,
   route = NO_ROUTE,
   selectedId,
+  focus,
   onSelect,
 }: {
   places: Place[];
   /** Loop stops in order. When non-empty, drawn as a numbered route. */
   route?: Place[];
   selectedId?: string;
+  /** Move the map here; change `key` to move again to the same spot. */
+  focus?: { lat: number; lng: number; zoom: number; key: number };
   onSelect: (place: Place) => void;
 }) {
   const mapEl = useRef<HTMLDivElement>(null);
@@ -113,6 +116,11 @@ export function MapCanvas({
     const size = map.getSize();
     map.panBy([pin.x - size.x / 2, pin.y - size.y * 0.3], { animate: true, duration: 0.35 });
   }, [parts, selectedId]);
+
+  useEffect(() => {
+    if (!parts || !focus) return;
+    parts.map.setView([focus.lat, focus.lng], focus.zoom, { animate: true });
+  }, [parts, focus]);
 
   // Zoom to the loop only when the route itself changes, not on every selection.
   useEffect(() => {

@@ -231,6 +231,11 @@ export function costLabel(cost: number) {
   return `~$${cost}`;
 }
 
+/** Real price level ($–$$$) when we have one, otherwise the cost estimate. */
+export function priceLabel(place: Pick<Place, "estimatedCost" | "priceLevel">) {
+  return place.priceLevel ? "$".repeat(place.priceLevel) : costLabel(place.estimatedCost);
+}
+
 export function statusLabel(place: Place) {
   if (place.saved) return "Saved by you";
   if (place.kind === "event") return "Happening today";
