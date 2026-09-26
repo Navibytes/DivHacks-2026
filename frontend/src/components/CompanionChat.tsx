@@ -15,8 +15,10 @@ import {
   starterPrompts,
   surpriseSpot,
   timeChoices,
+  toChatPlace,
   type Intent,
 } from "@/lib/companion";
+import { askLoopie } from "@/lib/api";
 import { usePlan, type LoopAnswers } from "@/lib/plan-store";
 import type { LoopPlan, Place } from "@/lib/types";
 
@@ -128,10 +130,10 @@ export function CompanionChat({
     setStep("start");
   }
 
-  function onSend(event: React.FormEvent) {
+  async function onSend(event: React.FormEvent) {
     event.preventDefault();
     const text = draft.trim();
-    if (!text || step === "building") return;
+    if (!text || step === "building" || typing) return;
     setDraft("");
     add({ from: "user", text });
 
@@ -139,6 +141,28 @@ export function CompanionChat({
       loopieSays({ text: "Tap one of the options below and I’ll keep going." });
       return;
     }
+
+    // Typed messages go to Gemini; if it's unavailable, fall back to keywords.
+    setTyping(true);
+    const ai = await askLoopie({
+      messages: [...messages, { from: "user" as const, text }].map(({ from, text }) => ({ from, text })),
+      places: plan.places.map(toChatPlace),
+    });
+    setTyping(false);
+
+    if (ai) {
+      add({
+        from: "loopie",
+        text: ai.reply,
+        places: ai.placeIds.map(plan.getPlace).filter((place): place is Place => Boolean(place)),
+      });
+      if (ai.action === "start_itinerary") {
+        answers.current = {};
+        loopieSays({ text: questions.time }, "time");
+      }
+      return;
+    }
+
     const intent = detectIntent(text);
     if (intent) runIntent(intent);
     else loopieSays({ text: "I’m still learning to chat! Try one of these:" });

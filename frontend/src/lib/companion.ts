@@ -1,8 +1,8 @@
 import type { BudgetOption, GroupSize, Place, TimeOption } from "@/lib/types";
 
-// Loopie's conversation script. Everything here is canned/local for the demo.
-// Person 4's AI layer can replace `detectIntent` (and the canned answers)
-// without touching the chat UI.
+// Loopie's conversation script. Typed messages go to Gemini (see
+// app/api/chat/route.ts); the starter prompts and the itinerary questions
+// below stay scripted so the demo is instant and predictable.
 
 export type Intent = "itinerary" | "nearby" | "free" | "surprise";
 
@@ -65,4 +65,29 @@ export function freeSpots(all: Place[]) {
 
 export function surpriseSpot(saved: Place[]) {
   return saved[Math.floor(Math.random() * saved.length)];
+}
+
+// ---------- Gemini chat contract (shared by the chat UI and /api/chat) ----------
+
+export type ChatTurn = { from: "user" | "loopie"; text: string };
+
+/** The slice of a Place that Gemini sees as context. */
+export type ChatPlace = Pick<
+  Place,
+  "id" | "name" | "category" | "neighborhood" | "distance" | "estimatedCost" | "kind" | "saved" | "description"
+>;
+
+export type AiChatRequest = { messages: ChatTurn[]; places: ChatPlace[] };
+
+export type AiChatReply = {
+  reply: string;
+  /** Places to show as cards under the reply (always ids from the request). */
+  placeIds: string[];
+  /** "start_itinerary" hands off to the time -> people -> money questions. */
+  action: "none" | "start_itinerary";
+};
+
+export function toChatPlace(place: Place): ChatPlace {
+  const { id, name, category, neighborhood, distance, estimatedCost, kind, saved, description } = place;
+  return { id, name, category, neighborhood, distance, estimatedCost, kind, saved, description };
 }
