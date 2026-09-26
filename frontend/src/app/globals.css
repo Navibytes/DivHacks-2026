@@ -164,14 +164,10 @@ input {
   }
 }
 
-/* Map: soften the basemap so it sits on the warm palette */
+/* Map basemap tweaks */
 .leaflet-container {
   font-family: inherit;
   background: var(--soft-red);
-}
-
-.leaflet-tile-pane {
-  filter: grayscale(0.75) sepia(0.25) brightness(1.04) contrast(0.92);
 }
 
 .leaflet-control-zoom a {

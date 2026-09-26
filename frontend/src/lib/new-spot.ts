@@ -46,6 +46,7 @@ export async function extractSpot(link: string): Promise<Place> {
     source,
     link,
     description: cleanCaption(caption),
+    address: addressFromCaption(caption),
     image: post?.thumbnail,
     creator: post?.creator,
   });
@@ -72,6 +73,13 @@ async function readTikTok(link: string) {
 function nameFromCaption(caption: string) {
   const match = caption.match(/📍\s*([^\n(,|#@\-–—]+)/u);
   return match ? match[1].trim().replace(/[.!?:]+$/, "") : "";
+}
+
+/** "📍 Joe's Pizza (7 Carmine St, New York, NY 10014)" -> "7 Carmine St" */
+function addressFromCaption(caption: string) {
+  const match = caption.match(/📍[^(\n]*\(([^)]+)\)/u);
+  if (!match || !/\d/.test(match[1])) return undefined; // needs a street number
+  return match[1].split(",")[0].trim();
 }
 
 /** Google Maps place links contain the name: /maps/place/Joe's+Pizza/@... */
@@ -151,6 +159,7 @@ function buildSpot(input: {
   source: PlaceSource;
   link: string;
   description?: string;
+  address?: string;
   image?: string;
   creator?: string;
 }): Place {
@@ -174,6 +183,8 @@ function buildSpot(input: {
     image: input.image ?? `https://images.unsplash.com/${CATEGORY_IMAGE[input.category]}?w=800&q=80`,
     kind: "saved",
     description: input.description,
+    address: input.address,
+    savedAt: new Date().toISOString(),
     video: video && input.creator ? { ...video, creator: input.creator } : video,
   };
 }

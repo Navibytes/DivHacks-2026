@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
 import { categoryLabel, statusLabel } from "@/data/places";
 import type { Place } from "@/lib/types";
+import { recoloredOsmLayer } from "@/lib/map-tiles";
 import { platformName } from "@/lib/video";
 
 type Leaflet = typeof import("leaflet");
@@ -43,12 +44,7 @@ export function MapCanvas({
     import("leaflet").then((leaflet) => {
       if (cancelled || !mapEl.current) return;
       map = leaflet.map(mapEl.current, { zoomControl: false, maxZoom: 18 }).setView(SOHO, 14);
-      leaflet
-        .tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "&copy; OpenStreetMap contributors",
-          maxZoom: 19,
-        })
-        .addTo(map);
+      recoloredOsmLayer(leaflet).addTo(map);
       setParts({ leaflet, map, layer: leaflet.layerGroup().addTo(map) });
     });
 

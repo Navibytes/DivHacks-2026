@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AddToLoopButton } from "@/components/AddToLoopButton";
+import { DirectionsIcon, PlaceFacts, directionsUrl } from "@/components/PlaceFacts";
 import { WatchVideoButton } from "@/components/PlaceDetails";
 import { VideoPreview } from "@/components/VideoPreview";
 import { VideoSheet } from "@/components/VideoSheet";
@@ -24,7 +25,7 @@ export function MapBottomSheet({
     <div
       role="dialog"
       aria-label={place.name}
-      className="sheet-in absolute inset-x-0 bottom-0 z-[1001] rounded-t-[20px] border-t border-line bg-paper p-4 shadow-[0_-4px_16px_rgba(35,26,17,0.06)]"
+      className="sheet-in absolute inset-x-0 bottom-0 z-[1001] max-h-[72%] overflow-y-auto rounded-t-[20px] border-t border-line bg-paper p-4 shadow-[0_-4px_16px_rgba(35,26,17,0.06)]"
     >
       <button
         type="button"
@@ -63,7 +64,11 @@ export function MapBottomSheet({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-3 border-t border-line pt-3">
+        <PlaceFacts place={place} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-[1fr_1fr_auto] gap-2">
         <AddToLoopButton placeId={place.id} />
         {place.video ? (
           <WatchVideoButton onClick={() => setPlaying(true)} />
@@ -76,6 +81,15 @@ export function MapBottomSheet({
             View details
           </button>
         )}
+        <a
+          href={directionsUrl(place)}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Directions to ${place.name}`}
+          className="grid w-12 place-items-center rounded-[16px] border border-line text-ink hover:border-red hover:text-red"
+        >
+          <DirectionsIcon />
+        </a>
       </div>
 
       {playing && place.video ? (

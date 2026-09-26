@@ -49,6 +49,16 @@ export interface Place {
   kind: PlaceKind;
   description?: string;
   video?: SourceVideo;
+  // Optional extras. The UI only shows the ones that are present.
+  address?: string;
+  /** Opening hours or, for events, when it's happening ("Today · 11 AM – 6 PM"). */
+  hours?: string;
+  rating?: { score: number; count: number };
+  /** Short facts like "Vegan" or "Cash only" (the first 3 are shown). */
+  tags?: string[];
+  mustTry?: string;
+  /** ISO date the user saved it. */
+  savedAt?: string;
 }
 
 export interface LoopStop {

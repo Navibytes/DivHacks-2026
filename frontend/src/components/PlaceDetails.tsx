@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { AddToLoopButton } from "@/components/AddToLoopButton";
+import { DirectionsIcon, PlaceFacts, directionsUrl } from "@/components/PlaceFacts";
 import { VideoPreview } from "@/components/VideoPreview";
 import { VideoSheet } from "@/components/VideoSheet";
-import { categoryLabel, costLabel, sourceLabel, statusLabel } from "@/data/places";
+import { categoryLabel, sourceLabel, statusLabel } from "@/data/places";
 import { platformName } from "@/lib/video";
 import type { Place } from "@/lib/types";
 
@@ -67,26 +68,28 @@ export function PlaceDetails({
           <p className="mt-3 text-[14px] leading-6 text-ink">{place.description}</p>
         ) : null}
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[13px]">
-          <div>
-            <dt className="text-muted">Cost</dt>
-            <dd className="mt-1 font-semibold text-ink">{costLabel(place.estimatedCost)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Found on</dt>
-            <dd className="mt-1 font-semibold text-ink">
-              {place.video
-                ? `${platformName(place.video)} · ${place.video.creator}`
-                : (sourceLabel(place.source)?.replace("Saved from ", "") ?? "LocalLoop")}
-            </dd>
-          </div>
-        </dl>
+        <div className="mt-4 border-t border-line pt-4">
+          <PlaceFacts place={place} />
+        </div>
+        <p className="mt-3 text-[12px] text-muted">
+          Found on{" "}
+          {place.video
+            ? `${platformName(place.video)} · ${place.video.creator}`
+            : (sourceLabel(place.source)?.replace("Saved from ", "") ?? "LocalLoop")}
+        </p>
 
-        <div className={`mt-5 grid gap-3 ${place.video ? "grid-cols-2" : "grid-cols-1"}`}>
+        <div className={`mt-5 grid gap-2 ${place.video ? "grid-cols-[1fr_1fr_auto]" : "grid-cols-[1fr_auto]"}`}>
           <AddToLoopButton placeId={place.id} />
-          {place.video ? (
-            <WatchVideoButton onClick={() => setPlaying(true)} />
-          ) : null}
+          {place.video ? <WatchVideoButton onClick={() => setPlaying(true)} /> : null}
+          <a
+            href={directionsUrl(place)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Directions to ${place.name}`}
+            className="grid w-12 place-items-center rounded-[16px] border border-line text-ink hover:border-red hover:text-red"
+          >
+            <DirectionsIcon />
+          </a>
         </div>
       </div>
 
