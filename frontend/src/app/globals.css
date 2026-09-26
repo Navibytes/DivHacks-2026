@@ -1,0 +1,203 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+@theme inline {
+  --color-cream: var(--background);
+  --color-paper: var(--white);
+  --color-red: var(--primary-red);
+  --color-red-dark: var(--primary-red-dark);
+  --color-soft: var(--soft-red);
+  --color-ink: var(--text);
+  --color-muted: var(--muted-text);
+  --color-line: var(--border);
+  --font-sans: var(--font-plus-jakarta);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #f3e8e2;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", sans-serif;
+}
+
+button,
+a,
+input {
+  font-family: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--primary-red);
+  outline-offset: 2px;
+}
+
+.phone-shell {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  background: var(--background);
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  html {
+    background: #efe4de;
+  }
+
+  .phone-shell {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    box-shadow: 0 0 0 12px rgba(35, 26, 17, 0.02);
+  }
+}
+
+@keyframes loopie-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes loopie-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes loopie-sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes loopie-glance {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(-2px);
+  }
+  70% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes loopie-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-8px);
+  }
+  55% {
+    transform: translateY(-2px);
+  }
+}
+
+.loopie {
+  overflow: visible;
+}
+
+.loopie .loopie-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.loopie-idle {
+  animation: loopie-bob 3.2s ease-in-out infinite;
+}
+
+.loopie-idle .loopie-eyes {
+  animation: loopie-blink 4.5s ease-in-out infinite;
+}
+
+.loopie-thinking {
+  animation: loopie-sway 1.6s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+.loopie-thinking .loopie-eyes {
+  animation: loopie-glance 1.6s ease-in-out infinite;
+}
+
+.loopie-happy {
+  animation: loopie-bounce 0.7s ease-in-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loopie-idle,
+  .loopie-idle .loopie-eyes,
+  .loopie-thinking,
+  .loopie-thinking .loopie-eyes,
+  .loopie-happy {
+    animation: none;
+  }
+}
+
+/* Map: soften the basemap so it sits on the warm palette */
+.leaflet-container {
+  font-family: inherit;
+  background: var(--soft-red);
+}
+
+.leaflet-tile-pane {
+  filter: grayscale(0.75) sepia(0.25) brightness(1.04) contrast(0.92);
+}
+
+.leaflet-control-zoom a {
+  color: var(--text);
+}
+
+/* Bottom sheets slide up */
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.sheet-in {
+  animation: sheet-in 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-in {
+    animation: none;
+  }
+}
+
+/* Loopie as a nav icon stays still */
+.nav-loopie .loopie,
+.nav-loopie .loopie-eyes {
+  animation: none;
+}
