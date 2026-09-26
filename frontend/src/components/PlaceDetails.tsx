@@ -78,6 +78,17 @@ export function PlaceDetails({
             : (sourceLabel(place.source)?.replace("Saved from ", "") ?? "LocalLoop")}
         </p>
 
+        {place.link && !place.video ? (
+          <a
+            href={place.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex rounded-[12px] border border-line px-4 py-2 text-[14px] font-semibold text-ink"
+          >
+            Open link ↗
+          </a>
+        ) : null}
+
         <div className={`mt-5 grid gap-2 ${place.video ? "grid-cols-[1fr_1fr_auto]" : "grid-cols-[1fr_auto]"}`}>
           <AddToLoopButton placeId={place.id} />
           {place.video ? <WatchVideoButton onClick={() => setPlaying(true)} /> : null}

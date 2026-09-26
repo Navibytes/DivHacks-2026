@@ -6,7 +6,11 @@ import type { Place } from "@/lib/types";
 export function PlaceFacts({ place }: { place: Place }) {
   const chips = [
     place.rating ? `★ ${place.rating.score.toFixed(1)} (${formatCount(place.rating.count)})` : null,
-    place.estimatedCost > 0 ? `~$${place.estimatedCost} / person` : "Free",
+    place.priceLevel
+      ? "$".repeat(place.priceLevel)
+      : place.estimatedCost > 0
+        ? `~$${place.estimatedCost} / person`
+        : "Free",
     ...(place.tags ?? []).filter((tag) => tag !== "Free").slice(0, 3),
   ].filter((chip): chip is string => Boolean(chip));
 

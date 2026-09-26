@@ -8,6 +8,7 @@ import { MapBottomSheet } from "@/components/MapBottomSheet";
 import { MapCanvas } from "@/components/MapCanvas";
 import { PlaceDetails } from "@/components/PlaceDetails";
 import { ViewToggle } from "@/components/ViewToggle";
+import { placesMessage, usePlaces } from "@/lib/places-store";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export function SavedMap({
   onShowList: () => void;
 }) {
   const { loop, getPlace, savedPlaces } = usePlan();
+  const placesStatus = placesMessage(usePlaces());
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Place | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -61,6 +63,11 @@ export function SavedMap({
       />
 
       <div className="absolute inset-x-4 top-4 z-[1000] space-y-3">
+        {placesStatus ? (
+          <p role="status" className="rounded-[12px] bg-paper px-3 py-2 text-[13px] text-muted shadow-[0_1px_2px_rgba(35,26,17,0.06)]">
+            {placesStatus}
+          </p>
+        ) : null}
         <div className="flex gap-2">
           <label className="flex flex-1 items-center gap-2 rounded-[16px] border border-line bg-paper px-4 shadow-[0_1px_2px_rgba(35,26,17,0.06)]">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0 text-muted">

@@ -59,6 +59,10 @@ export interface Place {
   mustTry?: string;
   /** ISO date the user saved it. */
   savedAt?: string;
+  /** 1–3, shown as $–$$$ (from Supabase `price_level`). */
+  priceLevel?: number;
+  /** Original post or website the spot came from. */
+  link?: string;
 }
 
 export interface LoopStop {

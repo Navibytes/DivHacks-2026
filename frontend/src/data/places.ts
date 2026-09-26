@@ -1,5 +1,6 @@
 import type { Place } from "@/lib/types";
 
+// Built-in demo spots, used when Supabase isn't configured (see lib/places-store.tsx).
 export const places: Place[] = [
   {
     id: "matchaful",
@@ -207,17 +208,6 @@ export const places: Place[] = [
     tags: ["Free", "Outdoors"],
   },
 ];
-
-export const savedPlaces = places.filter((place) => place.saved);
-
-export const nearbySaved = savedPlaces.slice(0, 3);
-
-// Events + LocalLoop discoveries the user hasn't saved yet (New Finds tab).
-export const newFinds = places.filter((place) => !place.saved);
-
-export function getPlace(id: string) {
-  return places.find((place) => place.id === id);
-}
 
 export function sourceLabel(source: Place["source"]) {
   if (source === "tiktok") return "Saved from TikTok";

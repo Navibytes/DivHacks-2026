@@ -2,15 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { newFinds } from "@/data/places";
-
-const items = [
-  { href: "/saved", label: "Saved Spots", icon: SavedIcon, match: ["/saved", "/loops"] },
-  { href: "/finds", label: "New Finds", icon: FindsIcon, match: ["/finds"], badge: newFinds.length },
-];
+import { usePlaces } from "@/lib/places-store";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { places } = usePlaces();
+  const items = [
+    { href: "/saved", label: "Saved Spots", icon: SavedIcon, match: ["/saved", "/loops"] },
+    {
+      href: "/finds",
+      label: "New Finds",
+      icon: FindsIcon,
+      match: ["/finds"],
+      badge: places.filter((place) => !place.saved).length,
+    },
+  ];
 
   return (
     <nav

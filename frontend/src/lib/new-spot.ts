@@ -101,7 +101,7 @@ const CATEGORY_WORDS: [PlaceCategory, RegExp][] = [
   ["food", /pizza|food|eat|restaurant|taco|burger|bagel|dumpling|brunch|bakery|slice|ramen|dinner|lunch/i],
 ];
 
-function categoryFromText(text: string): PlaceCategory {
+export function categoryFromText(text: string): PlaceCategory {
   return CATEGORY_WORDS.find(([, words]) => words.test(text))?.[0] ?? "food";
 }
 
@@ -122,6 +122,15 @@ function cleanCaption(caption: string) {
 
 // ---------- building the Place ----------
 
+export function categoryImage(category: PlaceCategory) {
+  return `https://images.unsplash.com/${CATEGORY_IMAGE[category]}?w=800&q=80`;
+}
+
+/** Closest known NYC neighborhood to a point. */
+export function nearestNeighborhood(point: { lat: number; lng: number }) {
+  return neighborhoods.reduce((best, n) => (milesBetween(point, n) < milesBetween(point, best) ? n : best));
+}
+
 const CATEGORY_IMAGE: Record<PlaceCategory, string> = {
   coffee: "photo-1495474472287-4d71bcdd2085",
   food: "photo-1565299624946-b28f40a0ae38",
@@ -131,7 +140,7 @@ const CATEGORY_IMAGE: Record<PlaceCategory, string> = {
   event: "photo-1514525253161-7a46d19cd819",
 };
 
-const CATEGORY_COST: Record<PlaceCategory, number> = {
+export const CATEGORY_COST: Record<PlaceCategory, number> = {
   coffee: 7,
   food: 15,
   books: 0,
@@ -140,9 +149,9 @@ const CATEGORY_COST: Record<PlaceCategory, number> = {
   event: 0,
 };
 
-const HOME = neighborhoods[0]; // distances are measured from SoHo for now
+export const HOME = neighborhoods[0]; // distances are measured from SoHo for now
 
-function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+export function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
@@ -180,7 +189,7 @@ function buildSpot(input: {
     source: input.source,
     lat,
     lng,
-    image: input.image ?? `https://images.unsplash.com/${CATEGORY_IMAGE[input.category]}?w=800&q=80`,
+    image: input.image ?? categoryImage(input.category),
     kind: "saved",
     description: input.description,
     address: input.address,

@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useMemo, useState } from "react";
 import { demoLoop } from "@/data/loops";
-import { places as demoPlaces, statusLabel } from "@/data/places";
+import { statusLabel } from "@/data/places";
 import { requestLoop } from "@/lib/api";
+import { usePlaces } from "@/lib/places-store";
 import { formatClock, parseClock } from "@/lib/time";
 import type { BudgetOption, GroupSize, LoopPlan, Place, TimeOption } from "@/lib/types";
 
@@ -39,18 +40,16 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const neighborhood = "SoHo";
   const [loop, setLoop] = useState<LoopPlan>(demoLoop);
   const [isPlanning, setIsPlanning] = useState(false);
-  const [places, setPlaces] = useState<Place[]>(demoPlaces);
+
+  // Places live in PlacesProvider (Supabase or demo data); re-exposed here for convenience.
+  const { places, savedPlaces, getPlace, addSpot } = usePlaces();
 
   const value = useMemo<PlanState>(() => {
-    const savedPlaces = places.filter((place) => place.saved);
-    const getPlace = (id: string) => places.find((place) => place.id === id);
-
     return {
       places,
       savedPlaces,
       getPlace,
-      // Newest saves first, like a feed.
-      addSpot: (place) => setPlaces((current) => [place, ...current]),
+      addSpot,
       neighborhood,
       loop,
       isPlanning,
@@ -103,7 +102,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       },
       isInLoop: (placeId) => loop.stops.some((stop) => stop.placeId === placeId),
     };
-  }, [places, loop, isPlanning]);
+  }, [places, savedPlaces, getPlace, addSpot, loop, isPlanning]);
 
   return <PlanContext.Provider value={value}>{children}</PlanContext.Provider>;
 }
