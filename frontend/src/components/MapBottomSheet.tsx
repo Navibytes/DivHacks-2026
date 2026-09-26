@@ -1,5 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import { AddToLoopButton } from "@/components/AddToLoopButton";
+import { WatchVideoButton } from "@/components/PlaceDetails";
+import { VideoPreview } from "@/components/VideoPreview";
+import { VideoSheet } from "@/components/VideoSheet";
 import { categoryLabel, statusLabel } from "@/data/places";
+import { platformName } from "@/lib/video";
 import type { Place } from "@/lib/types";
 
 export function MapBottomSheet({
@@ -11,6 +18,8 @@ export function MapBottomSheet({
   onClose: () => void;
   onViewDetails: () => void;
 }) {
+  const [playing, setPlaying] = useState(false);
+
   return (
     <div
       role="dialog"
@@ -25,27 +34,53 @@ export function MapBottomSheet({
       >
         <span className="mx-auto block h-1 w-10 rounded-full bg-line" />
       </button>
+
       <div className="flex gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={place.image} alt={place.name} className="h-20 w-20 shrink-0 rounded-[12px] object-cover" />
-        <div className="min-w-0">
-          <p className="text-[12px] font-semibold text-red">{statusLabel(place)}</p>
-          <h2 className="mt-0.5 truncate text-[18px] font-bold text-ink">{place.name}</h2>
-          <p className="mt-1 text-[13px] text-muted">
-            {place.neighborhood} · {place.distance} · {categoryLabel(place.category)}
+        <VideoPreview
+          place={place}
+          onPlay={() => setPlaying(true)}
+          className="h-24 w-20 shrink-0 rounded-[12px]"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-semibold text-red">
+            {place.video
+              ? `From ${place.video.creator} on ${platformName(place.video)}`
+              : statusLabel(place)}
           </p>
+          <button
+            type="button"
+            onClick={onViewDetails}
+            className="mt-0.5 block max-w-full truncate text-left text-[18px] font-bold text-ink hover:underline"
+          >
+            {place.name}
+          </button>
+          <p className="mt-0.5 text-[13px] text-muted">
+            {categoryLabel(place.category)} · {place.neighborhood} · {place.distance}
+          </p>
+          {place.description ? (
+            <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-ink">{place.description}</p>
+          ) : null}
         </div>
       </div>
+
       <div className="mt-4 grid grid-cols-2 gap-3">
         <AddToLoopButton placeId={place.id} />
-        <button
-          type="button"
-          onClick={onViewDetails}
-          className="rounded-[16px] border border-line py-3 text-[14px] font-semibold text-ink"
-        >
-          View details
-        </button>
+        {place.video ? (
+          <WatchVideoButton onClick={() => setPlaying(true)} />
+        ) : (
+          <button
+            type="button"
+            onClick={onViewDetails}
+            className="rounded-[16px] border border-line py-3 text-[14px] font-semibold text-ink"
+          >
+            View details
+          </button>
+        )}
       </div>
+
+      {playing && place.video ? (
+        <VideoSheet place={place} video={place.video} onClose={() => setPlaying(false)} />
+      ) : null}
     </div>
   );
 }

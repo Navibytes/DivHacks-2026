@@ -16,6 +16,9 @@ export type BudgetOption = "free" | "under20" | "under40" | "any";
 
 export type TimeOption = 1 | 2 | 3 | 4;
 
+/** 1 = just me, 2 = two people, 3 = a group of 3+ */
+export type GroupSize = 1 | 2 | 3;
+
 export type VibeOption =
   | "coffee"
   | "food"
@@ -23,6 +26,13 @@ export type VibeOption =
   | "art"
   | "outdoors"
   | "surprise";
+
+/** The TikTok/Instagram post a spot was saved from. */
+export interface SourceVideo {
+  platform: "tiktok" | "instagram";
+  url: string;
+  creator: string;
+}
 
 export interface Place {
   id: string;
@@ -37,6 +47,8 @@ export interface Place {
   lng: number;
   image: string;
   kind: PlaceKind;
+  description?: string;
+  video?: SourceVideo;
 }
 
 export interface LoopStop {
@@ -62,6 +74,7 @@ export interface LoopRequest {
   locationMode: LocationMode;
   neighborhood: string;
   timeHours: TimeOption;
+  groupSize: GroupSize;
   budget: BudgetOption;
   vibes: VibeOption[];
   savedPlaceIds: string[];

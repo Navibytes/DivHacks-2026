@@ -3,7 +3,9 @@
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
+import { categoryLabel, statusLabel } from "@/data/places";
 import type { Place } from "@/lib/types";
+import { platformName } from "@/lib/video";
 
 type Leaflet = typeof import("leaflet");
 type MapParts = { leaflet: Leaflet; map: LeafletMap; layer: LayerGroup };
@@ -45,7 +47,6 @@ export function MapCanvas({
           maxZoom: 19,
         })
         .addTo(map);
-      leaflet.control.zoom({ position: "bottomright" }).addTo(map);
       setParts({ leaflet, map, layer: leaflet.layerGroup().addTo(map) });
     });
 
@@ -73,19 +74,43 @@ export function MapCanvas({
     const routeIds = route.map((place) => place.id);
     const shown = [...places, ...route.filter((p) => !places.includes(p))];
 
+    // Hover previews only make sense with a mouse; on phones a tap opens the sheet.
+    const canHover = window.matchMedia("(hover: hover)").matches;
+
     shown.forEach((place) => {
       const stopNumber = routeIds.indexOf(place.id) + 1;
-      leaflet
+      const selected = place.id === selectedId;
+      const marker = leaflet
         .marker([place.lat, place.lng], {
-          icon: pinIcon(leaflet, place, stopNumber, place.id === selectedId),
-          title: place.name,
+          icon: pinIcon(leaflet, place, stopNumber, selected),
           alt: place.name,
           keyboard: true,
+          riseOnHover: true,
         })
-        .on("click", () => onSelectRef.current(place))
-        .addTo(layer);
+        .on("click", () => onSelectRef.current(place));
+
+      if (canHover && !selected) {
+        marker.bindTooltip(previewHtml(place), {
+          direction: "top",
+          offset: [0, -34],
+          className: "place-tooltip",
+          opacity: 1,
+        });
+      }
+      marker.addTo(layer);
+      // divIcons ignore `alt`, so label the pin for screen readers ourselves.
+      marker.getElement()?.setAttribute("aria-label", place.name);
     });
   }, [parts, places, route, selectedId]);
+
+  // Bring the selected place into view (e.g. a spot that was just added).
+  useEffect(() => {
+    if (!parts || !selectedId) return;
+    const place = places.find((p) => p.id === selectedId);
+    if (place && !parts.map.getBounds().contains([place.lat, place.lng])) {
+      parts.map.setView([place.lat, place.lng], parts.map.getZoom(), { animate: false });
+    }
+  }, [parts, places, selectedId]);
 
   // Zoom to the loop only when the route itself changes, not on every selection.
   useEffect(() => {
@@ -99,36 +124,70 @@ export function MapCanvas({
   return <div ref={mapEl} className="absolute inset-0" role="region" aria-label="Map of places" />;
 }
 
-const HEART =
-  '<svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M12 20.5 4.6 13.2a4.8 4.8 0 0 1 6.8-6.8l.6.6.6-.6a4.8 4.8 0 0 1 6.8 6.8L12 20.5Z"/></svg>';
-const CALENDAR =
-  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"><rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>';
+function escapeHtml(text: string) {
+  return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
 
+// Small card shown when hovering a pin: photo, what it is, where it came from.
+function previewHtml(place: Place) {
+  const source = place.video
+    ? `&#9654; ${escapeHtml(place.video.creator)} · ${platformName(place.video)}`
+    : escapeHtml(statusLabel(place));
+  const description = place.description
+    ? `<p class="pt-desc">${escapeHtml(place.description)}</p>`
+    : "";
+  const play = place.video ? '<span class="pt-play">&#9654;</span>' : "";
+
+  return `<div class="pt-card">
+    <div class="pt-thumb"><img src="${escapeHtml(place.image)}" alt="" />${play}</div>
+    <div class="pt-body">
+      <p class="pt-source">${source}</p>
+      <p class="pt-name">${escapeHtml(place.name)}</p>
+      <p class="pt-meta">${categoryLabel(place.category)} · ${escapeHtml(place.neighborhood)} · ${escapeHtml(place.distance)}</p>
+      ${description}
+      <p class="pt-hint">${place.video ? "Click for the video &amp; details" : "Click for details"}</p>
+    </div>
+  </div>`;
+}
+
+const PIN_PATH =
+  "M14 1C7 1 1.5 6.4 1.5 13.2c0 8.7 10.3 19.6 11.6 21a1.2 1.2 0 0 0 1.8 0c1.3-1.4 11.6-12.3 11.6-21C26.5 6.4 21 1 14 1Z";
+
+// Teardrop map pin with a round window: red = saved, dark = event, white = LocalLoop find.
+// Loop stops show their number in the window.
 function pinIcon(leaflet: Leaflet, place: Place, stopNumber: number, selected: boolean) {
-  const size = selected ? 36 : 28;
-  let background = "#FFFFFF";
-  let border = "#7A6A63";
-  let inner = '<span style="width:8px;height:8px;border-radius:999px;background:#7A6A63"></span>';
+  const scale = selected ? 1.3 : 1;
+  const width = Math.round(28 * scale);
+  const height = Math.round(36 * scale);
 
-  if (stopNumber > 0) {
-    background = "#B63A2B";
-    border = "#FFFFFF";
-    inner = `<span style="color:white;font:700 13px/1 var(--font-plus-jakarta),sans-serif">${stopNumber}</span>`;
-  } else if (place.kind === "saved") {
-    background = "#B63A2B";
-    border = "#FFFFFF";
-    inner = HEART;
+  let fill = "#FFFFFF";
+  let stroke = "#7A6A63";
+  let windowFill = "#FBE8E4";
+  if (place.kind === "saved" || stopNumber > 0) {
+    fill = "#B63A2B";
+    stroke = "#9E2F22";
+    windowFill = "#FFFFFF";
   } else if (place.kind === "event") {
-    background = "#231A11";
-    border = "#FFFFFF";
-    inner = CALENDAR;
+    fill = "#231A11";
+    stroke = "#231A11";
+    windowFill = "#FFFFFF";
   }
 
-  const ring = selected ? ",0 0 0 4px rgba(182,58,43,.25)" : "";
+  const label =
+    stopNumber > 0
+      ? `<text x="14" y="17.4" text-anchor="middle" font-size="10" font-weight="800" fill="#B63A2B" font-family="var(--font-plus-jakarta),sans-serif">${stopNumber}</text>`
+      : "";
+
   return leaflet.divIcon({
     className: "",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    html: `<div style="width:${size}px;height:${size}px;display:grid;place-items:center;border-radius:999px;background:${background};border:2px solid ${border};box-shadow:0 1px 3px rgba(35,26,17,.25)${ring};transition:all .15s">${inner}</div>`,
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height],
+    tooltipAnchor: [0, 0],
+    html: `<svg width="${width}" height="${height}" viewBox="0 0 28 36" style="display:block;overflow:visible;filter:drop-shadow(0 2px 2px rgba(35,26,17,.25))">
+      ${selected ? '<ellipse cx="14" cy="35" rx="9" ry="2.6" fill="none" stroke="#B63A2B" stroke-width="1.4"/>' : ""}
+      <path d="${PIN_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>
+      <circle cx="14" cy="13.5" r="${stopNumber > 0 ? 7 : 5.2}" fill="${windowFill}"/>
+      ${label}
+    </svg>`,
   });
 }

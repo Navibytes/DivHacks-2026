@@ -26,6 +26,7 @@ function SavedSpots() {
   return (
     <SavedMap
       showRoute={params.get("route") === "1"}
+      onShowRoute={() => router.replace("/saved?route=1")}
       onHideRoute={() => router.replace("/saved")}
       onShowList={() => router.replace("/saved?view=list")}
     />

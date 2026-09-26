@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AddToLoopButton } from "@/components/AddToLoopButton";
+import { VideoPreview } from "@/components/VideoPreview";
+import { VideoSheet } from "@/components/VideoSheet";
 import { categoryLabel, costLabel, sourceLabel, statusLabel } from "@/data/places";
+import { platformName } from "@/lib/video";
 import type { Place } from "@/lib/types";
 
 export function PlaceDetails({
@@ -12,11 +15,14 @@ export function PlaceDetails({
   place: Place;
   onClose: () => void;
 }) {
+  const [playing, setPlaying] = useState(false);
+
   useEffect(() => {
+    if (playing) return; // Escape closes the video first
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, playing]);
 
   return (
     <div
@@ -28,11 +34,14 @@ export function PlaceDetails({
         aria-modal="true"
         aria-labelledby="place-title"
         onClick={(event) => event.stopPropagation()}
-        className="sheet-in w-full max-w-[430px] rounded-t-[20px] bg-paper p-4 pb-[max(16px,env(safe-area-inset-bottom))]"
+        className="sheet-in max-h-[92dvh] w-full max-w-[430px] overflow-y-auto rounded-t-[20px] bg-paper p-4 pb-[max(16px,env(safe-area-inset-bottom))]"
       >
         <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={place.image} alt={place.name} className="h-44 w-full rounded-[16px] object-cover" />
+          <VideoPreview
+            place={place}
+            onPlay={() => setPlaying(true)}
+            className="block h-48 w-full rounded-[16px]"
+          />
           <button
             type="button"
             onClick={onClose}
@@ -51,25 +60,56 @@ export function PlaceDetails({
           {place.name}
         </h2>
         <p className="mt-1 text-[14px] text-muted">
-          {place.neighborhood} · {place.distance}
+          {categoryLabel(place.category)} · {place.neighborhood} · {place.distance}
         </p>
 
+        {place.description ? (
+          <p className="mt-3 text-[14px] leading-6 text-ink">{place.description}</p>
+        ) : null}
+
         <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[13px]">
-          <div>
-            <dt className="text-muted">Category</dt>
-            <dd className="mt-1 font-semibold text-ink">{categoryLabel(place.category)}</dd>
-          </div>
           <div>
             <dt className="text-muted">Cost</dt>
             <dd className="mt-1 font-semibold text-ink">{costLabel(place.estimatedCost)}</dd>
           </div>
+          <div>
+            <dt className="text-muted">Found on</dt>
+            <dd className="mt-1 font-semibold text-ink">
+              {place.video
+                ? `${platformName(place.video)} · ${place.video.creator}`
+                : (sourceLabel(place.source)?.replace("Saved from ", "") ?? "LocalLoop")}
+            </dd>
+          </div>
         </dl>
-        {sourceLabel(place.source) ? (
-          <p className="mt-3 text-[12px] text-muted">{sourceLabel(place.source)}</p>
-        ) : null}
 
-        <AddToLoopButton placeId={place.id} className="mt-5 w-full" />
+        <div className={`mt-5 grid gap-3 ${place.video ? "grid-cols-2" : "grid-cols-1"}`}>
+          <AddToLoopButton placeId={place.id} />
+          {place.video ? (
+            <WatchVideoButton onClick={() => setPlaying(true)} />
+          ) : null}
+        </div>
       </div>
+
+      {playing && place.video ? (
+        <div onClick={(event) => event.stopPropagation()}>
+          <VideoSheet place={place} video={place.video} onClose={() => setPlaying(false)} />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+export function WatchVideoButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center justify-center gap-2 rounded-[16px] border border-line bg-paper py-3 text-[14px] font-semibold text-ink hover:border-red hover:text-red"
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M4.5 2.8v10.4a.6.6 0 0 0 .9.5l8.2-5.2a.6.6 0 0 0 0-1L5.4 2.3a.6.6 0 0 0-.9.5Z" fill="currentColor" />
+      </svg>
+      Watch video
+    </button>
   );
 }

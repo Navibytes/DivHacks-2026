@@ -2,31 +2,29 @@
 
 import { createContext, useContext, useMemo, useState } from "react";
 import { demoLoop } from "@/data/loops";
-import { getPlace, savedPlaces, statusLabel } from "@/data/places";
+import { places as demoPlaces, statusLabel } from "@/data/places";
 import { requestLoop } from "@/lib/api";
 import { formatClock, parseClock } from "@/lib/time";
-import type {
-  BudgetOption,
-  LocationMode,
-  LoopPlan,
-  TimeOption,
-  VibeOption,
-} from "@/lib/types";
+import type { BudgetOption, GroupSize, LoopPlan, Place, TimeOption } from "@/lib/types";
+
+/** Answers the companion chat collects before planning. */
+export type LoopAnswers = {
+  timeHours: TimeOption;
+  groupSize: GroupSize;
+  budget: BudgetOption;
+};
 
 type PlanState = {
-  locationMode: LocationMode | null;
+  /** All known places, including spots the user added this session. */
+  places: Place[];
+  savedPlaces: Place[];
+  getPlace: (id: string) => Place | undefined;
+  addSpot: (place: Place) => void;
   neighborhood: string;
-  timeHours: TimeOption | null;
-  budget: BudgetOption | null;
-  vibes: VibeOption[];
   /** The loop to show: the one the user built, or the demo loop. */
   loop: LoopPlan;
   isPlanning: boolean;
-  setLocation: (mode: LocationMode, neighborhood?: string) => void;
-  setTime: (time: TimeOption) => void;
-  setBudget: (budget: BudgetOption) => void;
-  toggleVibe: (vibe: VibeOption) => void;
-  buildLoop: () => Promise<void>;
+  buildLoop: (answers: LoopAnswers) => Promise<LoopPlan>;
   addToLoop: (placeId: string) => void;
   isInLoop: (placeId: string) => boolean;
 };
@@ -37,57 +35,47 @@ const WALK_MINUTES_GUESS = 8;
 const VISIT_MINUTES_GUESS = 40;
 
 export function PlanProvider({ children }: { children: React.ReactNode }) {
-  const [locationMode, setLocationMode] = useState<LocationMode | null>(null);
-  const [neighborhood, setNeighborhood] = useState("SoHo");
-  const [timeHours, setTimeHours] = useState<TimeOption | null>(null);
-  const [budget, setBudget] = useState<BudgetOption | null>(null);
-  const [vibes, setVibes] = useState<VibeOption[]>([]);
+  // No location picker yet, so plans start from SoHo.
+  const neighborhood = "SoHo";
   const [loop, setLoop] = useState<LoopPlan>(demoLoop);
   const [isPlanning, setIsPlanning] = useState(false);
+  const [places, setPlaces] = useState<Place[]>(demoPlaces);
 
-  const value = useMemo<PlanState>(
-    () => ({
-      locationMode,
+  const value = useMemo<PlanState>(() => {
+    const savedPlaces = places.filter((place) => place.saved);
+    const getPlace = (id: string) => places.find((place) => place.id === id);
+
+    return {
+      places,
+      savedPlaces,
+      getPlace,
+      // Newest saves first, like a feed.
+      addSpot: (place) => setPlaces((current) => [place, ...current]),
       neighborhood,
-      timeHours,
-      budget,
-      vibes,
       loop,
       isPlanning,
-      setLocation: (mode, nextNeighborhood = "SoHo") => {
-        setLocationMode(mode);
-        setNeighborhood(nextNeighborhood);
-      },
-      setTime: setTimeHours,
-      setBudget,
-      toggleVibe: (vibe) => {
-        setVibes((current) => {
-          if (vibe === "surprise") return ["surprise"];
-          const next = current.filter((item) => item !== "surprise");
-          return next.includes(vibe)
-            ? next.filter((item) => item !== vibe)
-            : [...next, vibe];
-        });
-      },
-      buildLoop: async () => {
+      buildLoop: async ({ timeHours, groupSize, budget }) => {
         setIsPlanning(true);
-        // Keep the planning overlay up ~1s even if the API answers instantly.
+        // Let Loopie "think" for ~1s even if the API answers instantly.
         const minDelay = new Promise((resolve) =>
           setTimeout(resolve, 800 + Math.floor(Math.random() * 400)),
         );
         const [apiLoop] = await Promise.all([
           requestLoop({
-            locationMode: locationMode ?? "neighborhood",
+            locationMode: "neighborhood",
             neighborhood,
-            timeHours: timeHours ?? 2,
-            budget: budget ?? "any",
-            vibes,
+            timeHours,
+            groupSize,
+            budget,
+            vibes: [],
             savedPlaceIds: savedPlaces.map((place) => place.id),
           }),
           minDelay,
         ]);
-        setLoop(apiLoop ?? { ...demoLoop, neighborhood });
+        const next = apiLoop ?? { ...demoLoop, neighborhood };
+        setLoop(next);
         setIsPlanning(false);
+        return next;
       },
       addToLoop: (placeId) => {
         const place = getPlace(placeId);
@@ -114,9 +102,8 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         });
       },
       isInLoop: (placeId) => loop.stops.some((stop) => stop.placeId === placeId),
-    }),
-    [locationMode, neighborhood, timeHours, budget, vibes, loop, isPlanning],
-  );
+    };
+  }, [places, loop, isPlanning]);
 
   return <PlanContext.Provider value={value}>{children}</PlanContext.Provider>;
 }

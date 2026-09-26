@@ -1,27 +1,35 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AddSpotSheet } from "@/components/AddSpotSheet";
+import { CompanionButton } from "@/components/CompanionButton";
+import { CompanionChat } from "@/components/CompanionChat";
 import { MapBottomSheet } from "@/components/MapBottomSheet";
 import { MapCanvas } from "@/components/MapCanvas";
 import { PlaceDetails } from "@/components/PlaceDetails";
 import { ViewToggle } from "@/components/ViewToggle";
-import { getPlace, savedPlaces } from "@/data/places";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
 
 export function SavedMap({
   showRoute,
+  onShowRoute,
   onHideRoute,
   onShowList,
 }: {
   showRoute: boolean;
+  onShowRoute: () => void;
   onHideRoute: () => void;
   onShowList: () => void;
 }) {
-  const { loop } = usePlan();
+  const { loop, getPlace, savedPlaces } = usePlan();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Place | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  // Keep the chat mounted after first open so the conversation survives closing it.
+  const [chatStarted, setChatStarted] = useState(false);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -31,7 +39,7 @@ export function SavedMap({
         place.neighborhood.toLowerCase().includes(q) ||
         place.name.toLowerCase().includes(q),
     );
-  }, [query]);
+  }, [query, savedPlaces]);
 
   const route = useMemo(
     () =>
@@ -40,7 +48,7 @@ export function SavedMap({
             .map((stop) => getPlace(stop.placeId))
             .filter((place): place is Place => Boolean(place))
         : [],
-    [showRoute, loop],
+    [showRoute, loop, getPlace],
   );
 
   return (
@@ -84,6 +92,53 @@ export function SavedMap({
           </div>
         ) : null}
       </div>
+
+      {!selected ? (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="absolute bottom-5 left-4 z-[1000] flex items-center gap-2 rounded-full bg-red px-5 py-3 text-[15px] font-semibold text-white shadow-[0_2px_8px_rgba(35,26,17,0.18)] hover:bg-red-dark"
+        >
+          <span aria-hidden="true" className="text-[18px] leading-none">+</span>
+          Add a spot
+        </button>
+      ) : null}
+
+      {!selected ? (
+        <CompanionButton
+          open={chatOpen}
+          onToggle={() => {
+            setChatStarted(true);
+            setChatOpen((current) => !current);
+          }}
+        />
+      ) : null}
+
+      {chatStarted ? (
+        <CompanionChat
+          hidden={!chatOpen || Boolean(selected)}
+          onClose={() => setChatOpen(false)}
+          onSelectPlace={(place) => {
+            setChatOpen(false);
+            setSelected(place);
+          }}
+          onShowRoute={() => {
+            setChatOpen(false);
+            onShowRoute();
+          }}
+        />
+      ) : null}
+
+      {adding ? (
+        <AddSpotSheet
+          onClose={() => setAdding(false)}
+          onSaved={(place) => {
+            setAdding(false);
+            setQuery("");
+            setSelected(place);
+          }}
+        />
+      ) : null}
 
       {selected ? (
         <MapBottomSheet

@@ -15,6 +15,13 @@ export const places: Place[] = [
     image:
       "https://images.unsplash.com/photo-1515823662972-da6a2e4d3002?w=800&q=80",
     kind: "saved",
+    description:
+      "Plant-based matcha bar known for ceremonial-grade lattes. Try the iced strawberry matcha.",
+    video: {
+      platform: "tiktok",
+      url: "https://www.tiktok.com/@takestwoeggs/video/7467688839713279263",
+      creator: "@takestwoeggs",
+    },
   },
   {
     id: "housing-works",
@@ -24,12 +31,19 @@ export const places: Place[] = [
     distance: "0.4 mi",
     estimatedCost: 0,
     saved: true,
-    source: "instagram",
+    source: "tiktok",
     lat: 40.7248,
     lng: -73.9997,
     image:
       "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=800&q=80",
     kind: "saved",
+    description:
+      "Used bookstore and café where every purchase supports New Yorkers affected by HIV/AIDS and homelessness. The spiral balcony is the move.",
+    video: {
+      platform: "tiktok",
+      url: "https://www.tiktok.com/@sahnahh/video/7364048241320693038",
+      creator: "@sahnahh",
+    },
   },
   {
     id: "cafe-reggio",
@@ -39,12 +53,19 @@ export const places: Place[] = [
     distance: "0.8 mi",
     estimatedCost: 12,
     saved: true,
-    source: "maps",
+    source: "tiktok",
     lat: 40.7306,
     lng: -74.0005,
     image:
       "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&q=80",
     kind: "saved",
+    description:
+      "Greenwich Village institution since 1927, said to be where the cappuccino first landed in America. Old-world interior, great for a slow coffee.",
+    video: {
+      platform: "tiktok",
+      url: "https://www.tiktok.com/@food52/video/7440558937432214815",
+      creator: "@food52",
+    },
   },
   {
     id: "little-island",
@@ -54,12 +75,19 @@ export const places: Place[] = [
     distance: "1.1 mi",
     estimatedCost: 0,
     saved: true,
-    source: "friend",
+    source: "tiktok",
     lat: 40.742,
     lng: -74.01,
     image:
       "https://images.unsplash.com/photo-1568515387631-8b650bbcdb90?w=800&q=80",
     kind: "saved",
+    description:
+      "Floating park on the Hudson with winding paths, lawns, and sunset views over the river. Free to walk around.",
+    video: {
+      platform: "tiktok",
+      url: "https://www.tiktok.com/@littleislandnyc/video/7435011326809787679",
+      creator: "@littleislandnyc",
+    },
   },
   {
     id: "the-strand",
@@ -75,6 +103,13 @@ export const places: Place[] = [
     image:
       "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&q=80",
     kind: "saved",
+    description:
+      "Three floors and “18 miles” of new and used books. Don’t skip the $1–$2 carts outside.",
+    video: {
+      platform: "tiktok",
+      url: "https://www.tiktok.com/@danielleturk1/video/7528549300461260087",
+      creator: "@danielleturk1",
+    },
   },
   {
     id: "joes-pizza",
@@ -90,6 +125,13 @@ export const places: Place[] = [
     image:
       "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&q=80",
     kind: "saved",
+    description:
+      "Classic New York slice counter on Carmine St. Cash-friendly, quick, and famous from Spider-Man 2.",
+    video: {
+      platform: "tiktok",
+      url: "https://www.tiktok.com/@thebingbuzz/video/7196124214221360427",
+      creator: "@thebingbuzz",
+    },
   },
   {
     id: "washington-square",
@@ -105,6 +147,7 @@ export const places: Place[] = [
     image:
       "https://images.unsplash.com/photo-1555109307-f7d9da25c244?w=800&q=80",
     kind: "find",
+    description: "The Village’s living room: the arch, the fountain, chess players, and street musicians all afternoon.",
   },
   {
     id: "soho-art-market",
@@ -120,6 +163,7 @@ export const places: Place[] = [
     image:
       "https://images.unsplash.com/photo-1547891654-e66ed7ebb968?w=800&q=80",
     kind: "event",
+    description: "Local artists selling prints, ceramics, and jewelry on the sidewalk. Free to browse.",
   },
   {
     id: "nyc-parks-event",
@@ -135,6 +179,7 @@ export const places: Place[] = [
     image:
       "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80",
     kind: "event",
+    description: "Free outdoor event from NYC Parks happening today near SoHo.",
   },
 ];
 

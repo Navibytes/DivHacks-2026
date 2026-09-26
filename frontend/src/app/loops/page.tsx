@@ -5,12 +5,11 @@ import { useState } from "react";
 import { Loopie } from "@/components/Loopie";
 import { LoopStop } from "@/components/LoopStop";
 import { formatLoopTime } from "@/data/loops";
-import { getPlace } from "@/data/places";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
 
 export default function LoopsPage() {
-  const { loop } = usePlan();
+  const { loop, getPlace } = usePlan();
   // null = not started; otherwise the index of the stop you're at.
   const [current, setCurrent] = useState<number | null>(null);
 
@@ -35,8 +34,8 @@ export default function LoopsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <Link href="/" className="text-[13px] font-semibold text-red">
-          ← Edit plan
+        <Link href="/saved" className="text-[13px] font-semibold text-red">
+          ← Back to map
         </Link>
         <h1 className="mt-3 text-[28px] font-extrabold tracking-tight text-ink">Your Loop</h1>
         <p className="mt-3 text-[18px] font-semibold text-ink">{loop.neighborhood}</p>

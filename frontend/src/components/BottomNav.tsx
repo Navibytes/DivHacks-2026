@@ -2,14 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Loopie } from "@/components/Loopie";
 import { newFinds } from "@/data/places";
 
 const items = [
-  { href: "/saved", label: "Saved Spots", icon: SavedIcon, match: ["/saved"] },
+  { href: "/saved", label: "Saved Spots", icon: SavedIcon, match: ["/saved", "/loops"] },
   { href: "/finds", label: "New Finds", icon: FindsIcon, match: ["/finds"], badge: newFinds.length },
-  // The companion owns planning: the form at "/" and the generated loop at "/loops".
-  { href: "/", label: "AI Companion", icon: CompanionIcon, match: ["/", "/loops"] },
 ];
 
 export function BottomNav() {
@@ -20,7 +17,7 @@ export function BottomNav() {
       aria-label="Primary"
       className="sticky bottom-0 z-30 border-t border-line bg-paper/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-sm"
     >
-      <ul className="grid grid-cols-3">
+      <ul className="grid grid-cols-2">
         {items.map((item) => {
           const active = item.match.some((path) =>
             path === "/" ? pathname === "/" : pathname.startsWith(path),
@@ -85,13 +82,5 @@ function FindsIcon({ active }: { active: boolean }) {
       />
       <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" fill={active ? "#B63A2B" : "#7A6A63"} />
     </svg>
-  );
-}
-
-function CompanionIcon({ active }: { active: boolean }) {
-  return (
-    <span className={`nav-loopie block ${active ? "" : "grayscale opacity-60"}`}>
-      <Loopie state="idle" size={24} />
-    </span>
   );
 }
