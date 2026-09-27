@@ -2,27 +2,20 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { neighborhoods } from "@/data/neighborhoods";
 import { places as demoPlaces } from "@/data/places";
-import {
-  CATEGORY_COST,
-  HOME,
-  categoryFromText,
-  categoryImage,
-  detectSource,
-  milesBetween,
-  nearestNeighborhood,
-} from "@/lib/new-spot";
 import { applyVideoDetails, detailsFromVideo } from "@/lib/enrich";
-import { formatMiles, useLocation } from "@/lib/location-store";
+import { areaName, coordsFromMapLink, formatMiles, milesBetween } from "@/lib/geo";
+import { useLocation } from "@/lib/location-store";
+import { CATEGORY_COST, categoryFromText, categoryImage, detectSource } from "@/lib/new-spot";
 import type { Place, PlaceKind } from "@/lib/types";
 import { videoFromLink } from "@/lib/video";
 
-// The shared list of places. Loads the location catalog from Supabase when
-// NEXT_PUBLIC_SUPABASE_URL + a publishable/anon key are set; otherwise (or if
-// the query fails / the table is empty) it falls back to the built-in demo
-// spots, so the app never shows an empty map. Spots added in the app are kept
-// here too.
+// The shared list of places, loaded from Supabase (NEXT_PUBLIC_SUPABASE_URL +
+// a publishable/anon key). Only real data is shown: an empty table means an
+// empty map. The built-in demo spots are used only when Supabase isn't
+// configured at all (e.g. a teammate without keys). Spots added in the app are
+// kept here too. Distances are measured live from the user's location, and
+// neighborhood names come from OpenStreetMap when the table doesn't have them.
 
 type PlacesState = {
   places: Place[];
@@ -32,7 +25,8 @@ type PlacesState = {
   isLoading: boolean;
   /** Set when Supabase is configured but couldn't be used. */
   error: string | null;
-  origin: "supabase" | "demo";
+  /** Where the list came from. */
+  dataSource: "supabase" | "demo";
 };
 
 const PlacesContext = createContext<PlacesState | null>(null);
@@ -84,17 +78,6 @@ function toRating(row: Record<string, unknown>) {
   return Number.isFinite(score) && score > 0 ? { score, count: Number.isFinite(count) ? count : 0 } : undefined;
 }
 
-/** Coordinates inside a Google Maps link: "!3d40.7!4d-74.0", "@40.7,-74.0", or "?q=40.7,-74.0". */
-export function coordsFromMapLink(link: string | undefined) {
-  if (!link) return null;
-  const patterns = [/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, /@(-?\d+\.\d+),(-?\d+\.\d+)/, /[?&](?:q|query|ll|destination)=(-?\d+\.\d+)(?:,|%2C)(-?\d+\.\d+)/i];
-  for (const pattern of patterns) {
-    const match = link.match(pattern);
-    if (match) return { lat: Number(match[1]), lng: Number(match[2]) };
-  }
-  return null;
-}
-
 /** "POINT(-74.0 40.7)" (PostGIS text) -> coordinates. */
 function coordsFromPoint(value: unknown) {
   if (typeof value !== "string") return null;
@@ -133,19 +116,17 @@ function toPlace(row: Record<string, unknown>): Place | null {
   // Catalog rows are treated as saved locations unless explicitly marked otherwise.
   const saved = row.saved !== false;
   const rowKind = row.kind;
-  // `location` may be a neighborhood name or an address (a POINT was used above).
+  // `location` may be an area ("SoHo"), an address (has a number), or a POINT (used above).
   const locationText = coordsFromPoint(row.location) ? undefined : text(row.location);
-  const namedArea = locationText
-    ? neighborhoods.find((n) => n.name.toLowerCase() === locationText.toLowerCase())
-    : undefined;
-  const area = namedArea ?? nearestNeighborhood({ lat, lng });
+  const locationIsAddress = Boolean(locationText && /\d/.test(locationText));
 
   return {
     id: String(id),
     name: name.trim(),
-    neighborhood: area.name,
+    // Filled in from OpenStreetMap by the provider when the row doesn't say.
+    neighborhood: locationText && !locationIsAddress ? locationText : "",
     category,
-    distance: `${milesBetween(HOME, { lat, lng }).toFixed(1)} mi`,
+    distance: "", // computed live from the user's location
     estimatedCost: priceLevel ? PRICE_LEVEL_COST[priceLevel] : CATEGORY_COST[category],
     priceLevel,
     saved,
@@ -159,7 +140,7 @@ function toPlace(row: Record<string, unknown>): Place | null {
     savedAt: typeof row.created_at === "string" ? row.created_at : undefined,
     // Optional columns: used when the table has them.
     description: text(row.description),
-    address: text(row.address) ?? (namedArea ? undefined : locationText),
+    address: text(row.address) ?? (locationIsAddress ? locationText : undefined),
     hours: text(row.hours),
     mustTry: text(row.must_try),
     tags: toTags(row.tags),
@@ -198,7 +179,7 @@ export function PlacesProvider({ children }: { children: React.ReactNode }) {
   const [addedSpots, setAddedSpots] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(Boolean(supabase));
   const [error, setError] = useState<string | null>(null);
-  const [origin, setOrigin] = useState<"supabase" | "demo">("demo");
+  const [dataSource, setDataSource] = useState<"supabase" | "demo">(supabase ? "supabase" : "demo");
 
   useEffect(() => {
     if (!supabase) return;
@@ -206,18 +187,13 @@ export function PlacesProvider({ children }: { children: React.ReactNode }) {
     loadSupabasePlaces(supabase)
       .then((rows) => {
         if (!active) return;
-        if (rows.length) {
-          setPlaces(rows);
-          setOrigin("supabase");
-        } else {
-          setPlaces(demoPlaces);
-          setError("The Supabase places table is empty. Showing demo spots.");
-        }
+        setPlaces(rows);
+        setDataSource("supabase");
+        if (!rows.length) setError("No places saved yet. Tap “Add a spot” to add your first one.");
       })
       .catch((err: unknown) => {
         if (!active) return;
-        setPlaces(demoPlaces);
-        setError(`Couldn’t load Supabase places (${err instanceof Error ? err.message : "unknown error"}). Showing demo spots.`);
+        setError(`Couldn’t load places (${err instanceof Error ? err.message : "unknown error"}).`);
       })
       .finally(() => active && setIsLoading(false));
     return () => {
@@ -249,15 +225,30 @@ export function PlacesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [places]);
 
-  // Newest saves first, like a feed. Distances are measured live from where you are.
+  // Real neighborhood names (OpenStreetMap) for places whose row doesn't have one.
+  const [areaNames, setAreaNames] = useState<Record<string, string>>({});
+  const lookedUp = useRef(new Set<string>());
+  useEffect(() => {
+    for (const place of [...addedSpots, ...places]) {
+      if (place.neighborhood || lookedUp.current.has(place.id)) continue;
+      lookedUp.current.add(place.id);
+      void areaName(place).then((name) => {
+        if (name) setAreaNames((current) => ({ ...current, [place.id]: name }));
+      });
+    }
+  }, [addedSpots, places]);
+
+  // Newest saves first, like a feed. Distances are measured live from where
+  // you are, and left blank until your location is known.
   const here = useLocation().origin;
   const all = useMemo(
     () =>
       [...addedSpots, ...places].map((place) => ({
         ...place,
-        distance: formatMiles(milesBetween(here, place)),
+        neighborhood: place.neighborhood || areaNames[place.id] || "",
+        distance: here ? formatMiles(milesBetween(here, place)) : "",
       })),
-    [addedSpots, places, here],
+    [addedSpots, places, here, areaNames],
   );
   const addSpot = useCallback((place: Place) => setAddedSpots((current) => [place, ...current]), []);
 
@@ -269,9 +260,9 @@ export function PlacesProvider({ children }: { children: React.ReactNode }) {
       addSpot,
       isLoading,
       error,
-      origin,
+      dataSource,
     }),
-    [all, addSpot, isLoading, error, origin],
+    [all, addSpot, isLoading, error, dataSource],
   );
   return <PlacesContext.Provider value={value}>{children}</PlacesContext.Provider>;
 }

@@ -27,6 +27,29 @@ export default function LoopsPage() {
         ? "That’s a wrap. Nice loop!"
         : `Head to ${stops[current].place.name}.`;
 
+  if (!stops.length) {
+    return (
+      <div className="space-y-6">
+        <Link href="/saved" className="text-[13px] font-semibold text-red">
+          ← Back to map
+        </Link>
+        <div className="flex flex-col items-center rounded-[20px] border border-line bg-paper px-6 py-10 text-center">
+          <Loopie state="idle" size={80} />
+          <h1 className="mt-4 text-[22px] font-extrabold tracking-tight text-ink">No loop yet</h1>
+          <p className="mt-2 text-[14px] leading-6 text-muted">
+            Open Loopie on the map and tap “Plan an itinerary”, or add spots to a loop from their cards.
+          </p>
+          <Link
+            href="/saved"
+            className="mt-5 rounded-[16px] bg-red px-5 py-3 text-[15px] font-semibold text-white hover:bg-red-dark"
+          >
+            Go to the map
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   function advance() {
     setCurrent((value) => (value === null ? 0 : value + 1));
   }
@@ -38,7 +61,9 @@ export default function LoopsPage() {
           ← Back to map
         </Link>
         <h1 className="mt-3 text-[28px] font-extrabold tracking-tight text-ink">Your Loop</h1>
-        <p className="mt-3 text-[18px] font-semibold text-ink">{loop.neighborhood}</p>
+        {loop.neighborhood ? (
+          <p className="mt-3 text-[18px] font-semibold text-ink">{loop.neighborhood}</p>
+        ) : null}
         <p className="mt-1 text-[14px] text-muted">
           {formatLoopTime(loop.totalMinutes)} · ${loop.estimatedCostMax} estimated
         </p>

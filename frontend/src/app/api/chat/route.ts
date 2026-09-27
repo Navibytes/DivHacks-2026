@@ -78,10 +78,11 @@ export async function POST(request: Request) {
 }
 
 function whereUserIs(body: AiChatRequest) {
-  const area = typeof body.area === "string" && body.area.trim() ? body.area.trim().slice(0, 60) : "SoHo";
-  return body.liveLocation
-    ? `The user is currently in ${area} (from their phone's location). Each spot's "distance" is measured from where they are right now.`
-    : `Treat the user as being in ${area}. Each spot's "distance" is measured from there.`;
+  const area = typeof body.area === "string" && body.area.trim() ? body.area.trim().slice(0, 60) : "";
+  if (!body.liveLocation) {
+    return "The user's location is unknown, so there are no distances. Don't claim how close anything is.";
+  }
+  return `The user is currently ${area ? `in ${area}` : "at their phone's location"}. Each spot's "distance" is measured from where they are right now.`;
 }
 
 /** Keep the last few turns, trim long text, and start the history on a user turn. */

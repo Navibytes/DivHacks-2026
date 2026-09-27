@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loopie } from "@/components/Loopie";
-import { categoryLabel, statusLabel } from "@/data/places";
-import { searchMap, type Neighborhood } from "@/lib/search";
+import { placeMeta, statusLabel } from "@/data/places";
+import { searchAreas, type Area } from "@/lib/geo";
+import { useLocation } from "@/lib/location-store";
+import { searchPlaces } from "@/lib/search";
 import type { Place } from "@/lib/types";
 
 type Option =
   | { kind: "place"; id: string; place: Place }
-  | { kind: "area"; id: string; area: Neighborhood }
+  | { kind: "area"; id: string; area: Area }
   | { kind: "ask"; id: string; text: string };
 
 // Map search: as you type, suggests matching places and neighborhoods, and
@@ -22,7 +24,7 @@ export function MapSearch({
 }: {
   places: Place[];
   onPickPlace: (place: Place) => void;
-  onPickArea: (area: Neighborhood) => void;
+  onPickArea: (area: Area) => void;
   onAskLoopie: (question: string) => void;
   /** Rendered to the right of the input (the map/list toggle). */
   trailing?: React.ReactNode;
@@ -32,11 +34,34 @@ export function MapSearch({
   const [active, setActive] = useState(0);
 
   const text = query.trim();
-  const results = useMemo(() => searchMap(text, places), [text, places]);
+  const here = useLocation().origin;
+  const matches = useMemo(() => searchPlaces(text, places), [text, places]);
+
+  // Real neighborhoods/towns from OpenStreetMap, looked up after a short pause in typing.
+  const [areaResults, setAreaResults] = useState<{ query: string; areas: Area[] }>({ query: "", areas: [] });
+  useEffect(() => {
+    if (text.length < 3) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      void searchAreas(text, here).then((areas) => {
+        if (active) setAreaResults({ query: text, areas });
+      });
+    }, 450);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [text, here]);
+  const areas = areaResults.query === text ? areaResults.areas : [];
+  const results = { places: matches, areas };
   const options: Option[] = text
     ? [
         ...results.places.map((place) => ({ kind: "place" as const, id: `place-${place.id}`, place })),
-        ...results.areas.map((area) => ({ kind: "area" as const, id: `area-${area.name}`, area })),
+        ...results.areas.map((area) => ({
+          kind: "area" as const,
+          id: `area-${area.name}-${area.lat.toFixed(3)}`,
+          area,
+        })),
         { kind: "ask" as const, id: "ask-loopie", text },
       ]
     : [];
@@ -162,7 +187,7 @@ function PlaceRow({ place }: { place: Place }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px] font-semibold text-ink">{place.name}</span>
         <span className="block truncate text-[12px] text-muted">
-          {categoryLabel(place.category)} · {place.neighborhood} · {place.distance}
+          {placeMeta(place)}
         </span>
       </span>
       <span className="shrink-0 text-[11px] font-semibold text-red">
@@ -172,7 +197,7 @@ function PlaceRow({ place }: { place: Place }) {
   );
 }
 
-function AreaRow({ area }: { area: Neighborhood }) {
+function AreaRow({ area }: { area: Area }) {
   return (
     <>
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-soft text-red" aria-hidden="true">
@@ -183,7 +208,9 @@ function AreaRow({ area }: { area: Neighborhood }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px] font-semibold text-ink">{area.name}</span>
-        <span className="block text-[12px] text-muted">Neighborhood · show on map</span>
+        <span className="block truncate text-[12px] text-muted">
+          {area.detail ? `${area.detail} · show on map` : "Show on map"}
+        </span>
       </span>
     </>
   );

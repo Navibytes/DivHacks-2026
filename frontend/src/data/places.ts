@@ -241,3 +241,10 @@ export function statusLabel(place: Place) {
   if (place.kind === "event") return "Happening today";
   return "LocalLoop find";
 }
+
+/** "Coffee · Williamsburg · 0.3 mi", skipping whatever isn't known yet. */
+export function placeMeta(place: Place, { category = true }: { category?: boolean } = {}) {
+  return [category ? categoryLabel(place.category) : "", place.neighborhood, place.distance]
+    .filter(Boolean)
+    .join(" · ");
+}

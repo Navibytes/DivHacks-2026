@@ -29,8 +29,11 @@ The app reads `id`, `created_at`, `name`, `category`, `lat`, `lng`,
 `price_level`, and `link` from the `places` table (see `src/lib/places-store.tsx`).
 Columns the table doesn't have are filled in so every screen works:
 
-- **Neighborhood**: the closest known NYC neighborhood to `lat`/`lng`
-- **Distance**: measured from SoHo
+- **Neighborhood**: the `location` column if it's an area name, otherwise looked
+  up from `lat`/`lng` with OpenStreetMap (Nominatim)
+- **Distance**: measured live from the user's location (browser GPS); blank
+  until location is allowed
+- **Coordinates**: `lat`/`lng`, or read from the `map_link` Google Maps link
 - **Category**: normalized from `category` (e.g. `Coffee Shop` → coffee)
 - **Cost**: estimated from `price_level` (1–3), which is shown as `$`–`$$$`
 - **Photo**: a stock photo for the category
@@ -39,9 +42,9 @@ Columns the table doesn't have are filled in so every screen works:
 
 Since the table has no per-user save field, all its locations appear in Saved Spots.
 
-**Fallback:** if Supabase isn't configured, the query fails, or the table is
-empty, the app shows the built-in demo spots (`src/data/places.ts`) and a short
-message on Saved Spots explaining why.
+**Only real data:** an empty table shows an empty map with a prompt to add a
+spot, and a failed query shows the error. The built-in demo spots
+(`src/data/places.ts`) are used only when Supabase isn't configured at all.
 
 PostgreSQL table grants are separate from RLS. If the `anon` role gets
 `permission denied for table places`, run these grants in the Supabase SQL
@@ -66,7 +69,7 @@ using (true);
 
 If your table has a different name, replace `public.places` in that policy.
 When the configuration, table, or read policy needs attention, Saved Spots
-shows the Supabase error and falls back to the demo spots.
+shows the Supabase error.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

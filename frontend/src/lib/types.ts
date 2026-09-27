@@ -92,6 +92,8 @@ export interface LoopRequest {
   neighborhood: string;
   timeHours: TimeOption;
   groupSize: GroupSize;
+  /** The user's current position, when known. */
+  origin?: { lat: number; lng: number };
   budget: BudgetOption;
   vibes: VibeOption[];
   savedPlaceIds: string[];

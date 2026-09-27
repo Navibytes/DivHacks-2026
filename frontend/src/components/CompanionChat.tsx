@@ -153,8 +153,12 @@ export function CompanionChat({
     setTyping(false);
     add({
       from: "loopie",
-      text: `Your ${loop.neighborhood} loop is ready!`,
-      loop,
+      text: loop.stops.length
+        ? loop.neighborhood
+          ? `Your ${loop.neighborhood} loop is ready!`
+          : "Your loop is ready!"
+        : "I couldn’t find any saved spots to plan with yet. Add a few spots first!",
+      loop: loop.stops.length ? loop : undefined,
       groupSize: answers.current.groupSize,
     });
     setStep("start");
@@ -199,8 +203,8 @@ export function CompanionChat({
     const ai = await askLoopie({
       messages: [...messages, { from: "user" as const, text }].map(({ from, text }) => ({ from, text })),
       places: plan.places.map(toChatPlace),
-      area: location.area,
-      liveLocation: location.isLive,
+      area: location.area ?? undefined,
+      liveLocation: location.origin !== null,
     });
     setTyping(false);
 
@@ -454,7 +458,7 @@ export function CompanionChat({
                         <span className="min-w-0">
                           <span className="block truncate text-[13px] font-semibold text-ink">{place.name}</span>
                           <span className="block text-[12px] text-muted">
-                            {categoryLabel(place.category)} · {place.distance} · {priceLabel(place)}
+                            {[categoryLabel(place.category), place.distance, priceLabel(place)].filter(Boolean).join(" · ")}
                           </span>
                         </span>
                       </button>

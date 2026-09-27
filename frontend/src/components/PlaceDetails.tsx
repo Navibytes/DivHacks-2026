@@ -5,7 +5,7 @@ import { AddToLoopButton } from "@/components/AddToLoopButton";
 import { DirectionsIcon, PlaceFacts, directionsUrl } from "@/components/PlaceFacts";
 import { VideoPreview } from "@/components/VideoPreview";
 import { VideoSheet } from "@/components/VideoSheet";
-import { categoryLabel, sourceLabel, statusLabel } from "@/data/places";
+import { placeMeta, sourceLabel, statusLabel } from "@/data/places";
 import { videoCredit } from "@/lib/video";
 import type { Place } from "@/lib/types";
 
@@ -61,7 +61,7 @@ export function PlaceDetails({
           {place.name}
         </h2>
         <p className="mt-1 text-[14px] text-muted">
-          {categoryLabel(place.category)} · {place.neighborhood} · {place.distance}
+          {placeMeta(place)}
         </p>
 
         {place.description ? (

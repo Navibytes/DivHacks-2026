@@ -1,5 +1,5 @@
-import { neighborhoods } from "@/data/neighborhoods";
 import { requestSpotFromLink } from "@/lib/api";
+import { coordsFromMapLink, geocodeFirst, type Point } from "@/lib/geo";
 import type { Place, PlaceCategory, PlaceSource } from "@/lib/types";
 import { videoFromLink } from "@/lib/video";
 
@@ -8,9 +8,9 @@ import { videoFromLink } from "@/lib/video";
 //
 // 1. If the backend is running, it does the extraction (POST /api/spots/extract).
 // 2. Otherwise we do a best-effort version in the browser: read the TikTok
-//    caption via TikTok's public oEmbed endpoint and guess name / type / area
-//    from it. Coordinates are approximate (neighborhood center) until the
-//    backend geocodes real addresses.
+//    caption via TikTok's public oEmbed endpoint for the name / type / address,
+//    then find the real place on the map (Google Maps link coordinates, or an
+//    OpenStreetMap lookup of the name + address near the user).
 
 export function detectSource(link: string): PlaceSource {
   const url = link.toLowerCase();
@@ -22,7 +22,7 @@ export function detectSource(link: string): PlaceSource {
   return null;
 }
 
-export async function extractSpot(link: string): Promise<Place> {
+export async function extractSpot(link: string, near?: Point | null): Promise<Place> {
   const source = detectSource(link);
   if (!source) {
     throw new Error("Paste a TikTok, Instagram, or Google Maps link.");
@@ -38,15 +38,27 @@ export async function extractSpot(link: string): Promise<Place> {
     nameFromMapsLink(link) ||
     (post ? `Spot from ${post.creator}` : "New saved spot");
   const category = categoryFromText(`${name} ${caption}`);
+  const address = addressFromCaption(caption);
+
+  // Where is it? Exact coords from a Maps link, else look it up by name/address near the user.
+  const fromLink = coordsFromMapLink(link);
+  const geo = fromLink
+    ? null
+    : await geocodeFirst([address ? `${name}, ${address}` : "", address ? `${address}, New York` : "", name], near);
+  const found = fromLink ?? geo;
+  if (!found) {
+    throw new Error(`Couldn’t find “${name}” on the map. Try its Google Maps link instead.`);
+  }
 
   return buildSpot({
     name,
     category,
-    neighborhood: neighborhoodFromText(caption),
+    point: found,
     source,
     link,
     description: cleanCaption(caption),
-    address: addressFromCaption(caption),
+    address: address ?? geo?.address,
+    neighborhood: geo?.area,
     image: post?.thumbnail,
     creator: post?.creator,
   });
@@ -105,11 +117,6 @@ export function categoryFromText(text: string): PlaceCategory {
   return CATEGORY_WORDS.find(([, words]) => words.test(text))?.[0] ?? "food";
 }
 
-function neighborhoodFromText(text: string) {
-  const lower = text.toLowerCase();
-  return neighborhoods.find((n) => lower.includes(n.name.toLowerCase()))?.name ?? "SoHo";
-}
-
 /** Caption without hashtags/mentions, trimmed to a short blurb. */
 export function cleanCaption(caption: string) {
   const text = caption
@@ -124,11 +131,6 @@ export function cleanCaption(caption: string) {
 
 export function categoryImage(category: PlaceCategory) {
   return `https://images.unsplash.com/${CATEGORY_IMAGE[category]}?w=800&q=80`;
-}
-
-/** Closest known NYC neighborhood to a point. */
-export function nearestNeighborhood(point: { lat: number; lng: number }) {
-  return neighborhoods.reduce((best, n) => (milesBetween(point, n) < milesBetween(point, best) ? n : best));
 }
 
 const CATEGORY_IMAGE: Record<PlaceCategory, string> = {
@@ -149,22 +151,11 @@ export const CATEGORY_COST: Record<PlaceCategory, number> = {
   event: 0,
 };
 
-export const HOME = neighborhoods[0]; // distances are measured from SoHo for now
-
-export function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 3958.8 * 2 * Math.asin(Math.sqrt(h));
-}
-
 function buildSpot(input: {
   name: string;
   category: PlaceCategory;
-  neighborhood: string;
+  point: Point;
+  neighborhood?: string;
   source: PlaceSource;
   link: string;
   description?: string;
@@ -172,18 +163,16 @@ function buildSpot(input: {
   image?: string;
   creator?: string;
 }): Place {
-  const area = neighborhoods.find((n) => n.name === input.neighborhood) ?? HOME;
-  // Nudge the pin a little so several spots in one area don't stack.
-  const lat = area.lat + (Math.random() - 0.5) * 0.004;
-  const lng = area.lng + (Math.random() - 0.5) * 0.004;
+  const { lat, lng } = input.point;
   const video = videoFromLink(input.link);
 
   return {
     id: `spot-${Date.now()}`,
     name: input.name,
-    neighborhood: area.name,
+    // Blank values are filled in live by the places store (area lookup, distance from you).
+    neighborhood: input.neighborhood ?? "",
     category: input.category,
-    distance: `${milesBetween(HOME, { lat, lng }).toFixed(1)} mi`,
+    distance: "",
     estimatedCost: CATEGORY_COST[input.category],
     saved: true,
     source: input.source,

@@ -1,4 +1,4 @@
-import { milesBetween } from "@/lib/new-spot";
+import { milesBetween } from "@/lib/geo";
 import { formatClock, parseClock } from "@/lib/time";
 import type { BudgetOption, LoopPlan, Place, TimeOption } from "@/lib/types";
 

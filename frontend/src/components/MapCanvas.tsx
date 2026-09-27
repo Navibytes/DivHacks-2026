@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
-import { categoryLabel, statusLabel } from "@/data/places";
+import { placeMeta, statusLabel } from "@/data/places";
 import type { Place } from "@/lib/types";
 import { recoloredOsmLayer } from "@/lib/map-tiles";
 import { videoCredit } from "@/lib/video";
@@ -11,7 +11,8 @@ import { videoCredit } from "@/lib/video";
 type Leaflet = typeof import("leaflet");
 type MapParts = { leaflet: Leaflet; map: LeafletMap; layer: LayerGroup };
 
-const SOHO: [number, number] = [40.7265, -74.0005];
+// City-wide view shown only for the moment before places / your location load.
+const CITY_VIEW: [number, number] = [40.73, -73.97];
 const NO_ROUTE: Place[] = [];
 
 export function MapCanvas({
@@ -36,6 +37,8 @@ export function MapCanvas({
   const onSelectRef = useRef(onSelect);
   const shownRef = useRef<Place[]>([]);
   const centeredOnUser = useRef(false);
+  // Frame the map once: on your location if known, else around your places.
+  const framed = useRef(false);
   const [parts, setParts] = useState<MapParts | null>(null);
 
   useEffect(() => {
@@ -50,7 +53,7 @@ export function MapCanvas({
 
     import("leaflet").then((leaflet) => {
       if (cancelled || !mapEl.current) return;
-      map = leaflet.map(mapEl.current, { zoomControl: false, maxZoom: 18 }).setView(SOHO, 14);
+      map = leaflet.map(mapEl.current, { zoomControl: false, maxZoom: 18 }).setView(CITY_VIEW, 12);
       recoloredOsmLayer(leaflet).addTo(map);
       setParts({ leaflet, map, layer: leaflet.layerGroup().addTo(map) });
     });
@@ -121,12 +124,23 @@ export function MapCanvas({
     map.panBy([pin.x - size.x / 2, pin.y - size.y * 0.3], { animate: true, duration: 0.35 });
   }, [parts, selectedId]);
 
+  // Until your location arrives, fit the map around your places.
+  useEffect(() => {
+    if (!parts || framed.current || !places.length) return;
+    framed.current = true;
+    parts.map.fitBounds(
+      parts.leaflet.latLngBounds(places.map((place) => [place.lat, place.lng])),
+      { padding: [70, 70], maxZoom: 15, animate: false },
+    );
+  }, [parts, places]);
+
   // "You are here" dot, in its own layer so pin redraws don't touch it.
   useEffect(() => {
     if (!userLocation) centeredOnUser.current = false; // re-center next time GPS turns on
     if (!parts || !userLocation) return;
     if (!centeredOnUser.current) {
       centeredOnUser.current = true;
+      framed.current = true;
       parts.map.setView([userLocation.lat, userLocation.lng], Math.max(parts.map.getZoom(), 15));
     }
     const dot = parts.leaflet
@@ -183,7 +197,7 @@ function previewHtml(place: Place) {
     <div class="pt-body">
       <p class="pt-source">${source}</p>
       <p class="pt-name">${escapeHtml(place.name)}</p>
-      <p class="pt-meta">${categoryLabel(place.category)} · ${escapeHtml(place.neighborhood)} · ${escapeHtml(place.distance)}</p>
+      <p class="pt-meta">${escapeHtml(placeMeta(place))}</p>
       ${description}
       <p class="pt-hint">${place.video ? "Click for the video &amp; details" : "Click for details"}</p>
     </div>

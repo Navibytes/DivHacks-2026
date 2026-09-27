@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState } from "react";
-import { demoLoop } from "@/data/loops";
+import { emptyLoop } from "@/data/loops";
 import { statusLabel } from "@/data/places";
 import { requestLoop } from "@/lib/api";
 import { buildLocalLoop } from "@/lib/local-planner";
@@ -23,6 +23,7 @@ type PlanState = {
   savedPlaces: Place[];
   getPlace: (id: string) => Place | undefined;
   addSpot: (place: Place) => void;
+  /** Where the user is ("Williamsburg"), or "" when unknown. */
   neighborhood: string;
   /** The loop to show: the one the user built, or the demo loop. */
   loop: LoopPlan;
@@ -38,9 +39,11 @@ const WALK_MINUTES_GUESS = 8;
 const VISIT_MINUTES_GUESS = 40;
 
 export function PlanProvider({ children }: { children: React.ReactNode }) {
-  // Plans start from wherever you are (GPS), or SoHo in "pretend" mode.
-  const neighborhood = useLocation().area;
-  const [loop, setLoop] = useState<LoopPlan>(demoLoop);
+  // Plans start from wherever you are (GPS); area is "" until known.
+  const { area, origin } = useLocation();
+  const neighborhood = area ?? "";
+  // No loop until the user plans one.
+  const [loop, setLoop] = useState<LoopPlan>(() => emptyLoop());
   const [isPlanning, setIsPlanning] = useState(false);
 
   // Places live in PlacesProvider (Supabase or demo data); re-exposed here for convenience.
@@ -63,8 +66,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         );
         const [apiLoop] = await Promise.all([
           requestLoop({
-            locationMode: "neighborhood",
+            locationMode: origin ? "gps" : "neighborhood",
             neighborhood,
+            origin: origin ?? undefined,
             timeHours,
             groupSize,
             budget,
@@ -75,7 +79,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         ]);
         // Backend planner first; otherwise plan from the places we actually have.
         const next =
-          apiLoop ?? buildLocalLoop(savedPlaces, { timeHours, budget }, neighborhood) ?? { ...demoLoop, neighborhood };
+          apiLoop ?? buildLocalLoop(savedPlaces, { timeHours, budget }, neighborhood) ?? emptyLoop(neighborhood);
         setLoop(next);
         setIsPlanning(false);
         return next;
@@ -106,7 +110,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       },
       isInLoop: (placeId) => loop.stops.some((stop) => stop.placeId === placeId),
     };
-  }, [places, savedPlaces, getPlace, addSpot, loop, isPlanning, neighborhood]);
+  }, [places, savedPlaces, getPlace, addSpot, loop, isPlanning, neighborhood, origin]);
 
   return <PlanContext.Provider value={value}>{children}</PlanContext.Provider>;
 }

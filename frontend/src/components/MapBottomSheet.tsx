@@ -6,7 +6,7 @@ import { DirectionsIcon, PlaceFacts, directionsUrl } from "@/components/PlaceFac
 import { WatchVideoButton } from "@/components/PlaceDetails";
 import { VideoPreview } from "@/components/VideoPreview";
 import { VideoSheet } from "@/components/VideoSheet";
-import { categoryLabel, statusLabel } from "@/data/places";
+import { placeMeta, statusLabel } from "@/data/places";
 import { videoCredit } from "@/lib/video";
 import type { Place } from "@/lib/types";
 
@@ -56,7 +56,7 @@ export function MapBottomSheet({
             {place.name}
           </button>
           <p className="mt-0.5 text-[13px] text-muted">
-            {categoryLabel(place.category)} · {place.neighborhood} · {place.distance}
+            {placeMeta(place)}
           </p>
           {place.description ? (
             <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-ink">{place.description}</p>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loopie } from "@/components/Loopie";
 import { sourceLabel } from "@/data/places";
 import { applyVideoDetails, detailsFromVideo } from "@/lib/enrich";
+import { useLocation } from "@/lib/location-store";
 import { detectSource, extractSpot } from "@/lib/new-spot";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
@@ -17,6 +18,7 @@ export function AddSpotSheet({
   onSaved: (place: Place) => void;
 }) {
   const { addSpot } = usePlan();
+  const here = useLocation().origin;
   const [link, setLink] = useState("");
   const [status, setStatus] = useState<"idle" | "reading" | "error">("idle");
   const [error, setError] = useState("");
@@ -35,7 +37,7 @@ export function AddSpotSheet({
     if (!link.trim() || reading) return;
     setStatus("reading");
     try {
-      const basic = await extractSpot(link.trim());
+      const basic = await extractSpot(link.trim(), here);
       // Let Loopie read the caption for a summary, must-try and tags.
       const details = await detailsFromVideo(basic.name, link.trim());
       const place = {

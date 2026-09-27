@@ -11,7 +11,7 @@ import { MapSearch } from "@/components/MapSearch";
 import { PlaceDetails } from "@/components/PlaceDetails";
 import { ViewToggle } from "@/components/ViewToggle";
 import { useLocation } from "@/lib/location-store";
-import { milesBetween } from "@/lib/new-spot";
+import { milesBetween } from "@/lib/geo";
 import { placesMessage, usePlaces } from "@/lib/places-store";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
@@ -31,9 +31,9 @@ export function SavedMap({
   const placesStatus = placesMessage(usePlaces());
   const location = useLocation();
   // Hint in the location menu when you're far from everything you saved.
-  const nearestSaveMiles = savedPlaces.length
-    ? Math.min(...savedPlaces.map((place) => milesBetween(location.origin, place)))
-    : 0;
+  const here = location.origin;
+  const nearestSaveMiles =
+    here && savedPlaces.length ? Math.min(...savedPlaces.map((place) => milesBetween(here, place))) : 0;
   const [selected, setSelected] = useState<Place | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -66,7 +66,7 @@ export function SavedMap({
         route={route}
         selectedId={selected?.id}
         focus={focus}
-        userLocation={location.isLive ? location.origin : null}
+        userLocation={location.origin}
         onSelect={setSelected}
       />
 
@@ -94,17 +94,12 @@ export function SavedMap({
             setChatQuestion({ id: Date.now(), text });
           }}
         />
-        <LocationChip
-          farFromSaves={nearestSaveMiles > 3 ? nearestSaveMiles : undefined}
-          onPretendSoHo={() => {
-            setSelected(null);
-            setFocus({ lat: 40.7233, lng: -74.003, zoom: 15, key: Date.now() });
-          }}
-        />
+        <LocationChip farFromSaves={nearestSaveMiles > 3 ? nearestSaveMiles : undefined} />
         {showRoute ? (
           <div className="flex items-center justify-between rounded-[12px] bg-ink px-3 py-2 text-[13px] text-white">
             <span>
-              Your {loop.neighborhood} loop · {loop.stops.length} stops
+              Your {loop.neighborhood ? `${loop.neighborhood} ` : ""}loop · {loop.stops.length}{" "}
+              {loop.stops.length === 1 ? "stop" : "stops"}
             </span>
             <button
               type="button"
