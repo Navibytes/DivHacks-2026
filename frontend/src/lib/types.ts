@@ -64,6 +64,8 @@ export interface Place {
   priceLevel?: number;
   /** Original post or website the spot came from. */
   link?: string;
+  /** Google Maps link for the place (Supabase `map_link`). */
+  mapLink?: string;
 }
 
 export interface LoopStop {

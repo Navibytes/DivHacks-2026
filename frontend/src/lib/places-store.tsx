@@ -2,6 +2,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { neighborhoods } from "@/data/neighborhoods";
 import { places as demoPlaces } from "@/data/places";
 import {
   CATEGORY_COST,
@@ -77,6 +78,24 @@ function toRating(row: Record<string, unknown>) {
   return Number.isFinite(score) && score > 0 ? { score, count: Number.isFinite(count) ? count : 0 } : undefined;
 }
 
+/** Coordinates inside a Google Maps link: "!3d40.7!4d-74.0", "@40.7,-74.0", or "?q=40.7,-74.0". */
+export function coordsFromMapLink(link: string | undefined) {
+  if (!link) return null;
+  const patterns = [/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, /@(-?\d+\.\d+),(-?\d+\.\d+)/, /[?&](?:q|query|ll|destination)=(-?\d+\.\d+)(?:,|%2C)(-?\d+\.\d+)/i];
+  for (const pattern of patterns) {
+    const match = link.match(pattern);
+    if (match) return { lat: Number(match[1]), lng: Number(match[2]) };
+  }
+  return null;
+}
+
+/** "POINT(-74.0 40.7)" (PostGIS text) -> coordinates. */
+function coordsFromPoint(value: unknown) {
+  if (typeof value !== "string") return null;
+  const match = value.match(/POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)/i);
+  return match ? { lat: Number(match[2]), lng: Number(match[1]) } : null;
+}
+
 function toPriceLevel(value: unknown) {
   const level = Number(value);
   return Number.isInteger(level) && level >= 1 && level <= 3 ? level : undefined;
@@ -87,8 +106,11 @@ function toPlace(row: Record<string, unknown>): Place | null {
   const id = row.id;
   const name = row.name;
   const rawCategory = row.category;
-  const lat = Number(row.lat ?? row.latitude);
-  const lng = Number(row.lng ?? row.longitude);
+  const mapLink = validUrl(row.map_link);
+  // Coordinates: lat/lng columns, else the Google Maps link, else a PostGIS POINT in `location`.
+  const fallback = coordsFromMapLink(mapLink) ?? coordsFromPoint(row.location);
+  const lat = Number(row.lat ?? row.latitude ?? fallback?.lat);
+  const lng = Number(row.lng ?? row.longitude ?? fallback?.lng);
   if (
     (typeof id !== "string" && typeof id !== "number") ||
     typeof name !== "string" ||
@@ -105,7 +127,12 @@ function toPlace(row: Record<string, unknown>): Place | null {
   // Catalog rows are treated as saved locations unless explicitly marked otherwise.
   const saved = row.saved !== false;
   const rowKind = row.kind;
-  const area = nearestNeighborhood({ lat, lng });
+  // `location` may be a neighborhood name or an address (a POINT was used above).
+  const locationText = coordsFromPoint(row.location) ? undefined : text(row.location);
+  const namedArea = locationText
+    ? neighborhoods.find((n) => n.name.toLowerCase() === locationText.toLowerCase())
+    : undefined;
+  const area = namedArea ?? nearestNeighborhood({ lat, lng });
 
   return {
     id: String(id),
@@ -121,11 +148,12 @@ function toPlace(row: Record<string, unknown>): Place | null {
     lng,
     image: validUrl(row.image) ?? categoryImage(category),
     link,
+    mapLink,
     video: link ? videoFromLink(link) : undefined,
     savedAt: typeof row.created_at === "string" ? row.created_at : undefined,
     // Optional columns: used when the table has them.
     description: text(row.description),
-    address: text(row.address),
+    address: text(row.address) ?? (namedArea ? undefined : locationText),
     hours: text(row.hours),
     mustTry: text(row.must_try),
     tags: toTags(row.tags),

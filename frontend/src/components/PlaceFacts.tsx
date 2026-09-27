@@ -53,8 +53,9 @@ export function PlaceFacts({ place }: { place: Place }) {
   );
 }
 
-/** Google Maps directions to the place (by address when we have one). */
+/** Google Maps directions: the place's own Maps link if it has one, else by address/coords. */
 export function directionsUrl(place: Place) {
+  if (place.mapLink) return place.mapLink;
   const destination = place.address
     ? `${place.name}, ${place.address}, New York, NY`
     : `${place.lat},${place.lng}`;
