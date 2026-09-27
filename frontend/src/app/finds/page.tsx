@@ -42,7 +42,7 @@ export default function NewFindsPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "AI search failed. Please try again.");
+      if (!response.ok) throw new Error(data.error || "Place search failed. Please try again.");
       if (data.error) throw new Error(data.error);
       setSearches((current) => ({ ...current, [video.id]: { loading: false, result: data as PlaceSearchResponse } }));
     } catch (error) {
@@ -50,7 +50,7 @@ export default function NewFindsPage() {
         ...current,
         [video.id]: {
           loading: false,
-          error: error instanceof Error ? error.message : "AI search failed. Please try again.",
+          error: error instanceof Error ? error.message : "Place search failed. Please try again.",
         },
       }));
     }
@@ -98,7 +98,7 @@ export default function NewFindsPage() {
                   Open video <span aria-hidden="true">↗</span>
                 </a>
                 <form onSubmit={(event) => searchPlace(event, video)} className="flex min-w-0 flex-1 gap-2">
-                  <label className="sr-only" htmlFor={`location-${video.id}`}>Place name or area to search with AI</label>
+                  <label className="sr-only" htmlFor={`location-${video.id}`}>Place name or area to search on Google Maps</label>
                   <input
                     id={`location-${video.id}`}
                     name="query"
@@ -112,7 +112,7 @@ export default function NewFindsPage() {
                     disabled={searches[video.id]?.loading}
                     className="shrink-0 rounded-[8px] bg-red px-3 py-2 text-[12px] font-bold text-white hover:bg-red-dark disabled:opacity-60"
                   >
-                    {searches[video.id]?.loading ? "Searching…" : "Find with AI"}
+                    {searches[video.id]?.loading ? "Searching…" : "Find on Maps"}
                   </button>
                 </form>
               </div>
@@ -125,7 +125,7 @@ export default function NewFindsPage() {
                     <>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-[11px] font-bold uppercase text-muted">AI web match · {searches[video.id].result?.confidence} confidence</p>
+                          <p className="text-[11px] font-bold uppercase text-muted">Google Maps match · {searches[video.id].result?.confidence} confidence</p>
                           <h3 className="mt-1 text-[15px] font-bold text-ink">{searches[video.id].result?.name}</h3>
                           {searches[video.id].result?.address ? (
                             <p className="mt-0.5 text-[12px] leading-5 text-muted">{searches[video.id].result?.address}</p>
@@ -133,7 +133,10 @@ export default function NewFindsPage() {
                           <p className="mt-2 text-[12px] leading-5 text-ink">{searches[video.id].result?.reason}</p>
                         </div>
                         <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([searches[video.id].result?.name, searches[video.id].result?.address].filter(Boolean).join(" "))}`}
+                          href={
+                            searches[video.id].result?.mapLink ??
+                            `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([searches[video.id].result?.name, searches[video.id].result?.address].filter(Boolean).join(" "))}`
+                          }
                           target="_blank"
                           rel="noreferrer"
                           className="shrink-0 rounded-[8px] border border-line px-3 py-2 text-[12px] font-bold text-ink hover:border-ink"
@@ -151,7 +154,7 @@ export default function NewFindsPage() {
                           ))}
                         </div>
                       ) : null}
-                      <p className="mt-2 text-[11px] leading-4 text-muted">AI suggestions can be wrong. Check the source and map before saving.</p>
+                      <p className="mt-2 text-[11px] leading-4 text-muted">Check the map and the video match before saving.</p>
                     </>
                   ) : (
                     <p className="text-[13px] leading-5 text-muted">No confident match found. Try adding a neighborhood or a more specific name.</p>
