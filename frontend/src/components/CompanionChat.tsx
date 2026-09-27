@@ -19,6 +19,7 @@ import {
   type Intent,
 } from "@/lib/companion";
 import { askLoopie } from "@/lib/api";
+import { isSpeechSupported, listen } from "@/lib/speech";
 import { speak, stopSpeaking } from "@/lib/voice";
 import { usePlan, type LoopAnswers } from "@/lib/plan-store";
 import type { LoopPlan, Place } from "@/lib/types";
@@ -67,6 +68,13 @@ export function CompanionChat({
   });
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [voiceUnavailable, setVoiceUnavailable] = useState(false);
+  // Mic (browser speech recognition). Hidden where unsupported (e.g. Firefox).
+  const [micSupported] = useState(isSpeechSupported);
+  const [listening, setListening] = useState(false);
+  const [micHint, setMicHint] = useState<string | null>(null);
+  const stopListeningRef = useRef<(() => void) | null>(null);
+  // Set when the user spoke, so Loopie answers out loud even with voice off.
+  const replyAloud = useRef(false);
   const lastSpokenId = useRef(0);
   const [draft, setDraft] = useState("");
   const answers = useRef<Partial<LoopAnswers>>({});
@@ -232,16 +240,59 @@ export function CompanionChat({
   });
   useEffect(() => {
     const last = messages[messages.length - 1];
-    if (!voiceOn || !last || last.from !== "loopie" || last.id <= lastSpokenId.current) return;
+    if (!last || last.from !== "loopie" || last.id <= lastSpokenId.current) return;
+    if (!voiceOn && !replyAloud.current) return;
+    replyAloud.current = false;
     lastSpokenId.current = last.id;
     playRef.current(last.id, last.text);
   }, [messages, voiceOn]);
 
   // Stop talking when the chat is hidden or closed.
   useEffect(() => {
-    if (hidden) stopSpeaking();
+    if (!hidden) return;
+    stopSpeaking();
+    stopListeningRef.current?.();
   }, [hidden]);
-  useEffect(() => () => stopSpeaking(), []);
+  useEffect(
+    () => () => {
+      stopSpeaking();
+      stopListeningRef.current?.();
+    },
+    [],
+  );
+
+  function toggleMic() {
+    if (listening) {
+      stopListeningRef.current?.(); // onEnd sends whatever was heard
+      return;
+    }
+    if (typing || step === "building") return;
+    stopSpeaking(); // so Loopie doesn't hear itself
+    setSpeakingId(null);
+    setMicHint(null);
+    setListening(true);
+    stopListeningRef.current = listen({
+      onText: (text) => setDraft(text),
+      onEnd: (finalText) => {
+        setListening(false);
+        stopListeningRef.current = null;
+        if (!finalText) return;
+        setDraft("");
+        replyAloud.current = true;
+        void sendTextRef.current(finalText);
+      },
+      onError: (reason) => {
+        setListening(false);
+        setMicHint(
+          reason === "blocked"
+            ? "Mic is blocked. Allow it in your browser’s site settings."
+            : reason === "no-speech"
+              ? "Didn’t catch that. Tap the mic and try again."
+              : "The mic isn’t working right now. You can type instead.",
+        );
+      },
+    });
+  }
 
   let choices: { key: string; label: string; onPick: () => void }[] = [];
   if (step === "start") {
@@ -410,6 +461,11 @@ export function CompanionChat({
         </div>
       ) : null}
 
+      {micHint ? (
+        <p role="status" className="border-t border-line px-3 pt-2 text-[12px] text-red">
+          {micHint}
+        </p>
+      ) : null}
       <form onSubmit={onSend} className="flex items-center gap-2 border-t border-line px-3 py-2 focus-within:bg-soft/40">
         <label className="sr-only" htmlFor="loopie-input">
           Message Loopie
@@ -419,10 +475,26 @@ export function CompanionChat({
           ref={inputRef}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Ask Loopie…"
+          placeholder={listening ? "Listening…" : "Ask Loopie…"}
           autoComplete="off"
           className="min-w-0 flex-1 bg-transparent py-1.5 text-[14px] text-ink placeholder:text-muted focus:outline-none"
         />
+        {micSupported ? (
+          <button
+            type="button"
+            onClick={toggleMic}
+            aria-pressed={listening}
+            aria-label={listening ? "Stop listening" : "Talk to Loopie"}
+            className={`relative grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+              listening ? "mic-listening bg-red text-white" : "text-muted hover:bg-soft hover:text-red"
+            }`}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <rect x="9" y="3" width="6" height="11" rx="3" fill={listening ? "currentColor" : "none"} />
+              <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+            </svg>
+          </button>
+        ) : null}
         <button
           type="submit"
           aria-label="Send"
