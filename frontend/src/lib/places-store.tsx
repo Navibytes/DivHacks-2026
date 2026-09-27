@@ -37,14 +37,19 @@ type PlacesState = {
 
 const PlacesContext = createContext<PlacesState | null>(null);
 
-let client: SupabaseClient | null = null;
+// One client per browser tab, even if dev hot-reload evaluates this file twice.
+const globalStore = globalThis as typeof globalThis & { __localloopSupabase?: SupabaseClient };
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key || key === "your-supabase-anon-key") return null;
-  if (!client) client = createClient(url, key);
-  return client;
+  // Read-only catalog, no user accounts: skip Supabase Auth's session storage
+  // (also avoids "Multiple GoTrueClient instances" warnings during hot reload).
+  globalStore.__localloopSupabase ??= createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return globalStore.__localloopSupabase;
 }
 
 const kinds: PlaceKind[] = ["saved", "event", "find"];
