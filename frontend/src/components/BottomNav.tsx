@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { newFinds } from "@/data/places";
+import { unmatchedVideos } from "@/data/unmatched";
 
 const items = [
   { href: "/saved", label: "Saved Spots", icon: SavedIcon, match: ["/saved", "/loops"] },
-  { href: "/finds", label: "New Finds", icon: FindsIcon, match: ["/finds"], badge: newFinds.length },
+  { href: "/finds", label: "Unpinned", icon: FindsIcon, match: ["/finds"], badge: unmatchedVideos.length },
 ];
 
 export function BottomNav() {
@@ -37,7 +37,7 @@ export function BottomNav() {
                   {item.badge ? (
                     <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-red px-1 text-[10px] font-bold leading-none text-white">
                       {item.badge}
-                      <span className="sr-only"> new</span>
+                      <span className="sr-only"> unmatched clips</span>
                     </span>
                   ) : null}
                 </span>

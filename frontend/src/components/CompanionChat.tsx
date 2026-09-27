@@ -43,11 +43,15 @@ export function CompanionChat({
   onClose,
   onSelectPlace,
   onShowRoute,
+  className = "absolute bottom-[96px] right-4",
+  style,
 }: {
   hidden: boolean;
   onClose: () => void;
   onSelectPlace: (place: Place) => void;
   onShowRoute: () => void;
+  className?: string;
+  style?: React.CSSProperties;
 }) {
   const plan = usePlan();
   const [messages, setMessages] = useState<Message[]>([{ id: 0, from: "loopie", text: GREETING }]);
@@ -205,7 +209,8 @@ export function CompanionChat({
       role="dialog"
       aria-label="Chat with Loopie"
       hidden={hidden}
-      className="chat-in absolute bottom-[96px] right-4 z-[1002] flex h-[min(480px,calc(100%-124px))] w-[min(340px,calc(100%-32px))] flex-col overflow-hidden rounded-[20px] border border-line bg-paper shadow-[0_8px_28px_rgba(35,26,17,0.18)]"
+      style={style}
+      className={`chat-in ${className} z-[1002] flex h-[min(480px,calc(100dvh-180px))] w-[min(340px,calc(100vw-32px))] flex-col overflow-hidden rounded-[20px] border border-line bg-paper shadow-[0_8px_28px_rgba(35,26,17,0.18)]`}
     >
       <header className="flex items-center gap-2 border-b border-line px-3 py-2.5">
         <Loopie state={typing ? "thinking" : "idle"} size={36} />

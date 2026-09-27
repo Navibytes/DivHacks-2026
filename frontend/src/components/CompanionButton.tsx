@@ -8,7 +8,17 @@ const NUDGE_SHOWS_MS = 4_000;
 
 // Floating Loopie in the map's bottom-right corner. Every 15s (while the chat
 // is closed) it bounces and asks if you need help.
-export function CompanionButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+export function CompanionButton({
+  open,
+  onToggle,
+  className = "absolute bottom-5 right-4",
+  style,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   const [nudging, setNudging] = useState(false);
 
   useEffect(() => {
@@ -29,7 +39,7 @@ export function CompanionButton({ open, onToggle }: { open: boolean; onToggle: (
   }, [open]);
 
   return (
-    <div className="absolute bottom-5 right-4 z-[1001] flex items-end gap-2">
+    <div className={`${className} z-[1001] flex items-end gap-2`} style={style}>
       {nudging && !open ? (
         <button
           type="button"
