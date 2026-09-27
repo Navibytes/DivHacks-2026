@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { Loopie } from "@/components/Loopie";
 import { sourceLabel } from "@/data/places";
-import { applyVideoDetails, detailsFromVideo } from "@/lib/enrich";
-import { useLocation } from "@/lib/location-store";
 import { detectSource, extractSpot } from "@/lib/new-spot";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
@@ -18,7 +16,6 @@ export function AddSpotSheet({
   onSaved: (place: Place) => void;
 }) {
   const { addSpot } = usePlan();
-  const here = useLocation().origin;
   const [link, setLink] = useState("");
   const [status, setStatus] = useState<"idle" | "reading" | "error">("idle");
   const [error, setError] = useState("");
@@ -37,13 +34,7 @@ export function AddSpotSheet({
     if (!link.trim() || reading) return;
     setStatus("reading");
     try {
-      const basic = await extractSpot(link.trim(), here);
-      // Let Loopie read the caption for a summary, must-try and tags.
-      const details = await detailsFromVideo(basic.name, link.trim());
-      const place = {
-        ...applyVideoDetails(basic, details, false),
-        description: details.description ?? basic.description,
-      };
+      const place = await extractSpot(link.trim());
       addSpot(place);
       onSaved(place);
     } catch (err) {
@@ -96,7 +87,7 @@ export function AddSpotSheet({
               setLink(event.target.value);
               if (status === "error") setStatus("idle");
             }}
-            placeholder="Paste a TikTok, Instagram, or Maps link"
+            placeholder="Paste a TikTok or Instagram video link"
             autoFocus
             disabled={reading}
             className="mt-2 w-full rounded-[12px] border border-line bg-paper px-3 py-3 text-[15px] text-ink placeholder:text-muted disabled:opacity-60"
@@ -112,7 +103,7 @@ export function AddSpotSheet({
         {reading ? (
           <div className="mt-4 flex items-center gap-3 rounded-[16px] bg-soft px-4 py-3" role="status">
             <Loopie state="thinking" size={40} />
-            <p className="text-[14px] font-semibold text-ink">Watching the video for details…</p>
+            <p className="text-[14px] font-semibold text-ink">Finding the place and its address…</p>
           </div>
         ) : null}
 

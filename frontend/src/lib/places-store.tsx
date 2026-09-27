@@ -49,7 +49,8 @@ function getSupabaseClient() {
 const kinds: PlaceKind[] = ["saved", "event", "find"];
 
 // Rough per-person estimates for Supabase `price_level` 1–3.
-const PRICE_LEVEL_COST: Record<number, number> = { 1: 12, 2: 25, 3: 45 };
+// Rough per-person estimates for Google-style price levels 0 (free) – 4 ($$$$).
+const PRICE_LEVEL_COST: Record<number, number> = { 0: 0, 1: 12, 2: 25, 3: 45, 4: 80 };
 
 function validUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return undefined;
@@ -85,9 +86,10 @@ function coordsFromPoint(value: unknown) {
   return match ? { lat: Number(match[2]), lng: Number(match[1]) } : null;
 }
 
-function toPriceLevel(value: unknown) {
+function toPriceLevel(value: unknown): Place["priceLevel"] {
+  if (value === null || value === undefined || value === "") return undefined;
   const level = Number(value);
-  return Number.isInteger(level) && level >= 1 && level <= 3 ? level : undefined;
+  return level === 0 || level === 1 || level === 2 || level === 3 || level === 4 ? level : undefined;
 }
 
 /** Turn a Supabase row into a full Place, filling in what the table doesn't have. */
@@ -127,7 +129,7 @@ function toPlace(row: Record<string, unknown>): Place | null {
     neighborhood: locationText && !locationIsAddress ? locationText : "",
     category,
     distance: "", // computed live from the user's location
-    estimatedCost: priceLevel ? PRICE_LEVEL_COST[priceLevel] : CATEGORY_COST[category],
+    estimatedCost: priceLevel != null ? PRICE_LEVEL_COST[priceLevel] : CATEGORY_COST[category],
     priceLevel,
     saved,
     source: link ? detectSource(link) : null,
@@ -153,6 +155,27 @@ function toPlace(row: Record<string, unknown>): Place | null {
           : saved
             ? "saved"
             : "find",
+  };
+}
+
+/**
+ * Places from the backend extractor (POST /api/spots/extract) use slightly
+ * different fields: address in `location`, `createdAt`, a placeholder photo,
+ * and the raw caption as description. Map them onto what the UI shows; the
+ * video-details step then fills in Loopie's summary, tags and real thumbnail.
+ */
+function normalizeSpot(place: Place & { createdAt?: string }): Place {
+  const fromExtractor = typeof place.transcript === "string";
+  const category = place.category;
+  return {
+    ...place,
+    address: place.address ?? place.location,
+    savedAt: place.savedAt ?? place.createdAt,
+    image: fromExtractor || !place.image ? categoryImage(category) : place.image,
+    // Let Loopie write the summary instead of showing the raw caption.
+    description: fromExtractor ? undefined : place.description,
+    estimatedCost: place.priceLevel != null ? PRICE_LEVEL_COST[place.priceLevel] : place.estimatedCost,
+    neighborhood: place.neighborhood ?? "",
   };
 }
 
@@ -207,23 +230,27 @@ export function PlacesProvider({ children }: { children: React.ReactNode }) {
   // Fill in thin places from their TikTok (caption -> description, must-try,
   // tags, address; thumbnail -> photo). Each video is read once per session.
   useEffect(() => {
-    const thin = places.filter(
-      (place) => place.video?.platform === "tiktok" && !place.description && !triedIds.current.has(place.id),
+    const thin = [...addedSpots, ...places].filter(
+      (place) =>
+        place.video?.platform === "tiktok" &&
+        (!place.description || (!place.mustTry && !place.tags)) &&
+        !triedIds.current.has(place.id),
     );
     if (!thin.length) return;
     for (const place of thin) {
       triedIds.current.add(place.id);
-      // No cleanup: results for other places must still land after the list updates.
+      // No cleanup: results for other places must still land after the lists update.
       void detailsFromVideo(place.name, place.video!.url).then((details) => {
         if (!Object.keys(details).length) return;
-        setPlaces((current) =>
-          current.map((p) =>
+        const patch = (list: Place[]) =>
+          list.map((p) =>
             p.id === place.id ? applyVideoDetails(p, details, p.image === categoryImage(p.category)) : p,
-          ),
-        );
+          );
+        setPlaces(patch);
+        setAddedSpots(patch);
       });
     }
-  }, [places]);
+  }, [addedSpots, places]);
 
   // Real neighborhood names (OpenStreetMap) for places whose row doesn't have one.
   const [areaNames, setAreaNames] = useState<Record<string, string>>({});
@@ -250,7 +277,10 @@ export function PlacesProvider({ children }: { children: React.ReactNode }) {
       })),
     [addedSpots, places, here, areaNames],
   );
-  const addSpot = useCallback((place: Place) => setAddedSpots((current) => [place, ...current]), []);
+  const addSpot = useCallback(
+    (place: Place) => setAddedSpots((current) => [normalizeSpot(place), ...current.filter((p) => p.id !== place.id)]),
+    [],
+  );
 
   const value = useMemo<PlacesState>(
     () => ({

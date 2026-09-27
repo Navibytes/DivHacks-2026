@@ -1,16 +1,7 @@
 import { requestSpotFromLink } from "@/lib/api";
-import { coordsFromMapLink, geocodeFirst, type Point } from "@/lib/geo";
 import type { Place, PlaceCategory, PlaceSource } from "@/lib/types";
-import { videoFromLink } from "@/lib/video";
 
-// Turns a pasted TikTok / Instagram / Google Maps link into a saved Place.
-// The user only pastes the link; everything else is pulled from the post.
-//
-// 1. If the backend is running, it does the extraction (POST /api/spots/extract).
-// 2. Otherwise we do a best-effort version in the browser: read the TikTok
-//    caption via TikTok's public oEmbed endpoint for the name / type / address,
-//    then find the real place on the map (Google Maps link coordinates, or an
-//    OpenStreetMap lookup of the name + address near the user).
+// The server performs extraction and persists the spot before returning it.
 
 export function detectSource(link: string): PlaceSource {
   const url = link.toLowerCase();
@@ -22,46 +13,8 @@ export function detectSource(link: string): PlaceSource {
   return null;
 }
 
-export async function extractSpot(link: string, near?: Point | null): Promise<Place> {
-  const source = detectSource(link);
-  if (!source) {
-    throw new Error("Paste a TikTok, Instagram, or Google Maps link.");
-  }
-
-  const fromBackend = await requestSpotFromLink(link);
-  if (fromBackend) return fromBackend;
-
-  const post = source === "tiktok" ? await readTikTok(link) : null;
-  const caption = post?.caption ?? "";
-  const name =
-    nameFromCaption(caption) ||
-    nameFromMapsLink(link) ||
-    (post ? `Spot from ${post.creator}` : "New saved spot");
-  const category = categoryFromText(`${name} ${caption}`);
-  const address = addressFromCaption(caption);
-
-  // Where is it? Exact coords from a Maps link, else look it up by name/address near the user.
-  const fromLink = coordsFromMapLink(link);
-  const geo = fromLink
-    ? null
-    : await geocodeFirst([address ? `${name}, ${address}` : "", address ? `${address}, New York` : "", name], near);
-  const found = fromLink ?? geo;
-  if (!found) {
-    throw new Error(`Couldn’t find “${name}” on the map. Try its Google Maps link instead.`);
-  }
-
-  return buildSpot({
-    name,
-    category,
-    point: found,
-    source,
-    link,
-    description: cleanCaption(caption),
-    address: address ?? geo?.address,
-    neighborhood: geo?.area,
-    image: post?.thumbnail,
-    creator: post?.creator,
-  });
+export function extractSpot(link: string): Promise<Place> {
+  return requestSpotFromLink(link);
 }
 
 // ---------- reading the post ----------
@@ -81,28 +34,11 @@ export async function readTikTok(link: string) {
   }
 }
 
-/** Creators usually tag the place with a pin: "📍 Joe's Pizza (7 Carmine St)". */
-function nameFromCaption(caption: string) {
-  const match = caption.match(/📍\s*([^\n(,|#@\-–—]+)/u);
-  return match ? match[1].trim().replace(/[.!?:]+$/, "") : "";
-}
-
 /** "📍 Joe's Pizza (7 Carmine St, New York, NY 10014)" -> "7 Carmine St" */
 export function addressFromCaption(caption: string) {
   const match = caption.match(/📍[^(\n]*\(([^)]+)\)/u);
   if (!match || !/\d/.test(match[1])) return undefined; // needs a street number
   return match[1].split(",")[0].trim();
-}
-
-/** Google Maps place links contain the name: /maps/place/Joe's+Pizza/@... */
-function nameFromMapsLink(link: string) {
-  const match = link.match(/\/maps\/place\/([^/@?]+)/);
-  if (!match) return "";
-  try {
-    return decodeURIComponent(match[1].replace(/\+/g, " "));
-  } catch {
-    return "";
-  }
 }
 
 const CATEGORY_WORDS: [PlaceCategory, RegExp][] = [
@@ -151,38 +87,3 @@ export const CATEGORY_COST: Record<PlaceCategory, number> = {
   event: 0,
 };
 
-function buildSpot(input: {
-  name: string;
-  category: PlaceCategory;
-  point: Point;
-  neighborhood?: string;
-  source: PlaceSource;
-  link: string;
-  description?: string;
-  address?: string;
-  image?: string;
-  creator?: string;
-}): Place {
-  const { lat, lng } = input.point;
-  const video = videoFromLink(input.link);
-
-  return {
-    id: `spot-${Date.now()}`,
-    name: input.name,
-    // Blank values are filled in live by the places store (area lookup, distance from you).
-    neighborhood: input.neighborhood ?? "",
-    category: input.category,
-    distance: "",
-    estimatedCost: CATEGORY_COST[input.category],
-    saved: true,
-    source: input.source,
-    lat,
-    lng,
-    image: input.image ?? categoryImage(input.category),
-    kind: "saved",
-    description: input.description,
-    address: input.address,
-    savedAt: new Date().toISOString(),
-    video: video && input.creator ? { ...video, creator: input.creator } : video,
-  };
-}

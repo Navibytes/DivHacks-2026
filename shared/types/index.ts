@@ -21,8 +21,11 @@ export type VibeOption = "coffee" | "food" | "books" | "art" | "outdoors" | "sur
 export interface Place {
   id: string;
   name: string;
+  location?: string;
   neighborhood: string;
   category: PlaceCategory;
+  priceLevel?: 0 | 1 | 2 | 3 | 4 | null;
+  transcript?: string;
   distance: string;
   estimatedCost: number;
   saved: boolean;
