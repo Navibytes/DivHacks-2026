@@ -3,15 +3,20 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Loopie } from "@/components/Loopie";
-import { formatLoopTime } from "@/data/loops";
+import { formatCostRange, formatLoopTime } from "@/data/loops";
 import { categoryLabel, priceLabel } from "@/data/places";
 import {
   budgetChoices,
   detectIntent,
   freeSpots,
   groupChoices,
+  isCancel,
   nearbySpots,
+  parseBudget,
+  parseGroup,
+  parseTime,
   questions,
+  reAsk,
   starterPrompts,
   surpriseSpot,
   timeChoices,
@@ -22,7 +27,7 @@ import { askLoopie } from "@/lib/api";
 import { isSpeechSupported, listen } from "@/lib/speech";
 import { speak, stopSpeaking } from "@/lib/voice";
 import { usePlan, type LoopAnswers } from "@/lib/plan-store";
-import type { LoopPlan, Place } from "@/lib/types";
+import type { BudgetOption, GroupSize, LoopPlan, Place, TimeOption } from "@/lib/types";
 
 type UserMessage = { id: number; from: "user"; text: string };
 type LoopieMessage = {
@@ -164,8 +169,26 @@ export function CompanionChat({
   async function sendText(text: string) {
     add({ from: "user", text });
 
+    // During the itinerary questions, understand spoken/typed answers too.
     if (step === "time" || step === "people" || step === "budget") {
-      loopieSays({ text: "Tap one of the options below and I’ll keep going." });
+      if (isCancel(text)) {
+        answers.current = {};
+        loopieSays({ text: "No problem! What else can I help with?" }, "start");
+        return;
+      }
+      if (step === "time") {
+        const value = parseTime(text);
+        if (value) answerTime(value);
+        else loopieSays({ text: reAsk.time });
+      } else if (step === "people") {
+        const value = parseGroup(text);
+        if (value) answerGroup(value);
+        else loopieSays({ text: reAsk.people });
+      } else {
+        const value = parseBudget(text);
+        if (value) answerBudget(value);
+        else loopieSays({ text: reAsk.budget });
+      }
       return;
     }
 
@@ -294,6 +317,20 @@ export function CompanionChat({
     });
   }
 
+  // One handler per question, shared by the buttons and typed/spoken answers.
+  function answerTime(value: TimeOption) {
+    answers.current.timeHours = value;
+    loopieSays({ text: questions.people }, "people");
+  }
+  function answerGroup(value: GroupSize) {
+    answers.current.groupSize = value;
+    loopieSays({ text: questions.budget }, "budget");
+  }
+  function answerBudget(value: BudgetOption) {
+    answers.current.budget = value;
+    void finishPlan();
+  }
+
   let choices: { key: string; label: string; onPick: () => void }[] = [];
   if (step === "start") {
     choices = starterPrompts.map((p) => ({ key: p.intent, label: p.label, onPick: () => runIntent(p.intent) }));
@@ -301,28 +338,19 @@ export function CompanionChat({
     choices = timeChoices.map((c) => ({
       key: c.label,
       label: c.label,
-      onPick: () => {
-        answers.current.timeHours = c.value;
-        loopieSays({ text: questions.people }, "people");
-      },
+      onPick: () => answerTime(c.value),
     }));
   } else if (step === "people") {
     choices = groupChoices.map((c) => ({
       key: c.label,
       label: c.label,
-      onPick: () => {
-        answers.current.groupSize = c.value;
-        loopieSays({ text: questions.budget }, "budget");
-      },
+      onPick: () => answerGroup(c.value),
     }));
   } else if (step === "budget") {
     choices = budgetChoices.map((c) => ({
       key: c.label,
       label: c.label,
-      onPick: () => {
-        answers.current.budget = c.value;
-        finishPlan();
-      },
+      onPick: () => answerBudget(c.value),
     }));
   }
 
@@ -535,7 +563,7 @@ function LoopCard({
         ))}
       </ol>
       <p className="mt-2.5 border-t border-line pt-2 text-[12px] text-muted">
-        {formatLoopTime(loop.totalMinutes)} · ${loop.estimatedCostMin}–{loop.estimatedCostMax}
+        {formatLoopTime(loop.totalMinutes)} · {formatCostRange(loop.estimatedCostMin, loop.estimatedCostMax)}
         {groupSize > 1 ? " per person" : ""}
       </p>
       <div className="mt-2.5 grid grid-cols-2 gap-2">

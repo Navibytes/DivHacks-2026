@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Loopie } from "@/components/Loopie";
 import { LoopStop } from "@/components/LoopStop";
-import { formatLoopTime } from "@/data/loops";
+import { formatCostRange, formatLoopTime } from "@/data/loops";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
 
@@ -83,7 +83,7 @@ export default function LoopsPage() {
         <div className="border-l border-line pl-4">
           <dt className="text-muted">Estimated cost</dt>
           <dd className="mt-1 text-[16px] font-semibold text-ink">
-            ${loop.estimatedCostMin}–{loop.estimatedCostMax}
+            {formatCostRange(loop.estimatedCostMin, loop.estimatedCostMax)}
           </dd>
         </div>
       </dl>

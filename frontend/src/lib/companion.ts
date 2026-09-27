@@ -91,3 +91,64 @@ export function toChatPlace(place: Place): ChatPlace {
   const { id, name, category, neighborhood, distance, estimatedCost, kind, saved, description } = place;
   return { id, name, category, neighborhood, distance, estimatedCost, kind, saved, description };
 }
+
+// ---------- Understanding typed / spoken answers to the itinerary questions ----------
+
+const NUMBER_WORDS: Record<string, number> = {
+  a: 1, an: 1, one: 1, two: 2, couple: 2, three: 3, four: 4, five: 5, six: 6, "twenty": 20, "forty": 40,
+};
+
+/** First number in the text, written as digits or a word ("two", "an"). */
+function firstNumber(text: string): number | null {
+  const digits = text.match(/\d+(\.\d+)?/);
+  if (digits) return Number(digits[0]);
+  const word = text.split(/[^a-z]+/).find((w) => w in NUMBER_WORDS);
+  return word ? NUMBER_WORDS[word] : null;
+}
+
+export function parseTime(raw: string): TimeOption | null {
+  const t = raw.toLowerCase();
+  if (/(all|whole|entire|full)\s*(day|afternoon)|all of it|as long|no rush|more|lots/.test(t)) return 4;
+  if (/half (an )?hour|30 min|thirty min/.test(t)) return 1;
+  const n = firstNumber(t);
+  if (n === null) return null;
+  if (n <= 1) return 1;
+  if (n <= 2) return 2;
+  if (n <= 3) return 3;
+  return 4;
+}
+
+export function parseGroup(raw: string): GroupSize | null {
+  const t = raw.toLowerCase();
+  if (/(just|only)\s+me|by myself|myself|alone|solo|^me$|^i am$|^1$/.test(t)) return 1;
+  if (/group|friends|family|squad|crew|team|all of us|a bunch/.test(t)) return 3;
+  if (/couple|date|partner|boyfriend|girlfriend|husband|wife|a friend|my friend|two of us|the two|us two|me and/.test(t)) return 2;
+  const n = firstNumber(t);
+  if (n === null) return null;
+  return n <= 1 ? 1 : n === 2 ? 2 : 3;
+}
+
+export function parseBudget(raw: string): BudgetOption | null {
+  const t = raw.toLowerCase();
+  if (/doesn.?t matter|does not matter|don.?t care|any|whatever|no limit|no budget|splurge|anything/.test(t)) return "any";
+  if (/free|no money|nothing|zero|\$0|broke/.test(t)) return "free";
+  if (/cheap|low|tight|little/.test(t)) return "under20";
+  const n = firstNumber(t);
+  if (n === null) return null;
+  if (n <= 0) return "free";
+  if (n <= 20) return "under20";
+  if (n <= 40) return "under40";
+  return "any";
+}
+
+/** "never mind", "stop", "start over": leave the itinerary questions. */
+export function isCancel(raw: string) {
+  return /never ?mind|cancel|stop|start over|forget it|go back|nvm/.test(raw.toLowerCase());
+}
+
+/** Re-ask wording that works when heard out loud, not just read. */
+export const reAsk = {
+  time: "Sorry, I didn’t catch that. Say 1 hour, 2 hours, 3 hours, or all day.",
+  people: "Sorry, I didn’t catch that. Is it just you, the two of you, or a group?",
+  budget: "Sorry, I didn’t catch that. Free, under $20, under $40, or doesn’t matter?",
+};

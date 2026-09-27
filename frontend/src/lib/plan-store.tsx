@@ -4,6 +4,7 @@ import { createContext, useContext, useMemo, useState } from "react";
 import { demoLoop } from "@/data/loops";
 import { statusLabel } from "@/data/places";
 import { requestLoop } from "@/lib/api";
+import { buildLocalLoop } from "@/lib/local-planner";
 import { usePlaces } from "@/lib/places-store";
 import { formatClock, parseClock } from "@/lib/time";
 import type { BudgetOption, GroupSize, LoopPlan, Place, TimeOption } from "@/lib/types";
@@ -71,7 +72,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
           }),
           minDelay,
         ]);
-        const next = apiLoop ?? { ...demoLoop, neighborhood };
+        // Backend planner first; otherwise plan from the places we actually have.
+        const next =
+          apiLoop ?? buildLocalLoop(savedPlaces, { timeHours, budget }, neighborhood) ?? { ...demoLoop, neighborhood };
         setLoop(next);
         setIsPlanning(false);
         return next;

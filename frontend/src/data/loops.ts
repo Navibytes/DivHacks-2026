@@ -41,3 +41,10 @@ export function formatLoopTime(totalMinutes: number) {
   if (hours) return `${hours} hr`;
   return `${minutes} min`;
 }
+
+/** "$8–18", "$12" when there's one price, or "Free". */
+export function formatCostRange(min: number, max: number) {
+  if (max <= 0) return "Free";
+  if (min === max) return `$${max}`;
+  return `$${min}–${max}`;
+}
