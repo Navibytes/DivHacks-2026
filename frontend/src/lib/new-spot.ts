@@ -54,7 +54,7 @@ export async function extractSpot(link: string): Promise<Place> {
 
 // ---------- reading the post ----------
 
-async function readTikTok(link: string) {
+export async function readTikTok(link: string) {
   try {
     const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(link)}`);
     if (!res.ok) return null;
@@ -76,7 +76,7 @@ function nameFromCaption(caption: string) {
 }
 
 /** "📍 Joe's Pizza (7 Carmine St, New York, NY 10014)" -> "7 Carmine St" */
-function addressFromCaption(caption: string) {
+export function addressFromCaption(caption: string) {
   const match = caption.match(/📍[^(\n]*\(([^)]+)\)/u);
   if (!match || !/\d/.test(match[1])) return undefined; // needs a street number
   return match[1].split(",")[0].trim();
@@ -111,7 +111,7 @@ function neighborhoodFromText(text: string) {
 }
 
 /** Caption without hashtags/mentions, trimmed to a short blurb. */
-function cleanCaption(caption: string) {
+export function cleanCaption(caption: string) {
   const text = caption
     .replace(/[#@][\p{L}\p{N}_.]+/gu, "")
     .replace(/\s+/g, " ")

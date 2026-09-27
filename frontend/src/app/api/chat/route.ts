@@ -4,7 +4,8 @@ import type { AiChatReply, AiChatRequest, ChatPlace, ChatTurn } from "@/lib/comp
 // POST /api/chat: Loopie's brain. Runs on the server so GEMINI_API_KEY never
 // reaches the browser. Set it in frontend/.env.local (see .env.example).
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
+// Flash-Lite: fastest and the most generous free-tier quota (3.8 Flash allows only ~20 requests/day free).
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 const MAX_TURNS = 12;
 const MAX_TEXT = 500;
 const MAX_PLACES = 60;

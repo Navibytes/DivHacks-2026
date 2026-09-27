@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { places as demoPlaces } from "@/data/places";
 import {
   CATEGORY_COST,
@@ -12,6 +12,7 @@ import {
   milesBetween,
   nearestNeighborhood,
 } from "@/lib/new-spot";
+import { applyVideoDetails, detailsFromVideo } from "@/lib/enrich";
 import type { Place, PlaceKind } from "@/lib/types";
 import { videoFromLink } from "@/lib/video";
 
@@ -57,6 +58,23 @@ function validUrl(value: unknown) {
   } catch {
     return undefined;
   }
+}
+
+function text(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+/** Tags can be a Postgres text[] or a comma-separated string. */
+function toTags(value: unknown) {
+  const list = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
+  const tags = list.map((tag) => (typeof tag === "string" ? tag.trim() : "")).filter(Boolean);
+  return tags.length ? tags : undefined;
+}
+
+function toRating(row: Record<string, unknown>) {
+  const score = Number(row.rating);
+  const count = Number(row.rating_count ?? row.review_count ?? 0);
+  return Number.isFinite(score) && score > 0 ? { score, count: Number.isFinite(count) ? count : 0 } : undefined;
 }
 
 function toPriceLevel(value: unknown) {
@@ -105,6 +123,13 @@ function toPlace(row: Record<string, unknown>): Place | null {
     link,
     video: link ? videoFromLink(link) : undefined,
     savedAt: typeof row.created_at === "string" ? row.created_at : undefined,
+    // Optional columns: used when the table has them.
+    description: text(row.description),
+    address: text(row.address),
+    hours: text(row.hours),
+    mustTry: text(row.must_try),
+    tags: toTags(row.tags),
+    rating: toRating(row),
     kind:
       typeof rowKind === "string" && kinds.includes(rowKind as PlaceKind)
         ? (rowKind as PlaceKind)
@@ -123,7 +148,9 @@ async function loadSupabasePlaces(supabase: SupabaseClient): Promise<Place[]> {
   }
   const { data, error } = await supabase
     .from(table)
-    .select("id,created_at,name,category,lat,lng,price_level,link")
+    // "*" so optional columns (description, address, hours, tags, must_try,
+    // image, rating) are picked up automatically if the table gains them.
+    .select("*")
     .order("name");
   if (error) throw new Error(error.message);
   return (data ?? [])
@@ -163,6 +190,30 @@ export function PlacesProvider({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, [supabase]);
+
+  // Places we've already tried to fill in, so a video with no caption can't loop.
+  const triedIds = useRef(new Set<string>());
+
+  // Fill in thin places from their TikTok (caption -> description, must-try,
+  // tags, address; thumbnail -> photo). Each video is read once per session.
+  useEffect(() => {
+    const thin = places.filter(
+      (place) => place.video?.platform === "tiktok" && !place.description && !triedIds.current.has(place.id),
+    );
+    if (!thin.length) return;
+    for (const place of thin) {
+      triedIds.current.add(place.id);
+      // No cleanup: results for other places must still land after the list updates.
+      void detailsFromVideo(place.name, place.video!.url).then((details) => {
+        if (!Object.keys(details).length) return;
+        setPlaces((current) =>
+          current.map((p) =>
+            p.id === place.id ? applyVideoDetails(p, details, p.image === categoryImage(p.category)) : p,
+          ),
+        );
+      });
+    }
+  }, [places]);
 
   // Newest saves first, like a feed.
   const all = useMemo(() => [...addedSpots, ...places], [addedSpots, places]);

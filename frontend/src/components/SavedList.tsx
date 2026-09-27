@@ -50,7 +50,7 @@ export function SavedList({ onShowMap }: { onShowMap: () => void }) {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-[28px] font-extrabold tracking-tight">Saved spots</h1>
-          <p className="mt-1 text-[14px] text-muted">{savedPlaces.length} places you wanted to try</p>
+          <p className="mt-1 text-[14px] text-muted">{savedPlaces.length} {savedPlaces.length === 1 ? "place" : "places"} you wanted to try</p>
         </div>
         <ViewToggle view="list" onToggle={onShowMap} />
       </header>

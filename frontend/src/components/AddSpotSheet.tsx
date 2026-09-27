@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loopie } from "@/components/Loopie";
 import { sourceLabel } from "@/data/places";
+import { applyVideoDetails, detailsFromVideo } from "@/lib/enrich";
 import { detectSource, extractSpot } from "@/lib/new-spot";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
@@ -34,7 +35,13 @@ export function AddSpotSheet({
     if (!link.trim() || reading) return;
     setStatus("reading");
     try {
-      const place = await extractSpot(link.trim());
+      const basic = await extractSpot(link.trim());
+      // Let Loopie read the caption for a summary, must-try and tags.
+      const details = await detailsFromVideo(basic.name, link.trim());
+      const place = {
+        ...applyVideoDetails(basic, details, false),
+        description: details.description ?? basic.description,
+      };
       addSpot(place);
       onSaved(place);
     } catch (err) {
