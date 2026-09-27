@@ -77,7 +77,13 @@ export type ChatPlace = Pick<
   "id" | "name" | "category" | "neighborhood" | "distance" | "estimatedCost" | "kind" | "saved" | "description"
 >;
 
-export type AiChatRequest = { messages: ChatTurn[]; places: ChatPlace[] };
+export type AiChatRequest = {
+  messages: ChatTurn[];
+  places: ChatPlace[];
+  /** Where the user is ("Williamsburg", "Nearby"), and whether it's their real position. */
+  area?: string;
+  liveLocation?: boolean;
+};
 
 export type AiChatReply = {
   reply: string;

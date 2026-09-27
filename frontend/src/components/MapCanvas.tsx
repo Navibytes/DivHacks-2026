@@ -19,6 +19,7 @@ export function MapCanvas({
   route = NO_ROUTE,
   selectedId,
   focus,
+  userLocation,
   onSelect,
 }: {
   places: Place[];
@@ -27,11 +28,14 @@ export function MapCanvas({
   selectedId?: string;
   /** Move the map here; change `key` to move again to the same spot. */
   focus?: { lat: number; lng: number; zoom: number; key: number };
+  /** Draws a "you are here" dot when set. */
+  userLocation?: { lat: number; lng: number } | null;
   onSelect: (place: Place) => void;
 }) {
   const mapEl = useRef<HTMLDivElement>(null);
   const onSelectRef = useRef(onSelect);
   const shownRef = useRef<Place[]>([]);
+  const centeredOnUser = useRef(false);
   const [parts, setParts] = useState<MapParts | null>(null);
 
   useEffect(() => {
@@ -116,6 +120,32 @@ export function MapCanvas({
     const size = map.getSize();
     map.panBy([pin.x - size.x / 2, pin.y - size.y * 0.3], { animate: true, duration: 0.35 });
   }, [parts, selectedId]);
+
+  // "You are here" dot, in its own layer so pin redraws don't touch it.
+  useEffect(() => {
+    if (!userLocation) centeredOnUser.current = false; // re-center next time GPS turns on
+    if (!parts || !userLocation) return;
+    if (!centeredOnUser.current) {
+      centeredOnUser.current = true;
+      parts.map.setView([userLocation.lat, userLocation.lng], Math.max(parts.map.getZoom(), 15));
+    }
+    const dot = parts.leaflet
+      .marker([userLocation.lat, userLocation.lng], {
+        icon: parts.leaflet.divIcon({
+          className: "",
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+          html: '<span class="you-are-here" aria-hidden="true"></span>',
+        }),
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: -100,
+      })
+      .addTo(parts.map);
+    return () => {
+      dot.remove();
+    };
+  }, [parts, userLocation]);
 
   useEffect(() => {
     if (!parts || !focus) return;

@@ -6,9 +6,12 @@ import { CompanionButton } from "@/components/CompanionButton";
 import { CompanionChat } from "@/components/CompanionChat";
 import { MapBottomSheet } from "@/components/MapBottomSheet";
 import { MapCanvas } from "@/components/MapCanvas";
+import { LocationChip } from "@/components/LocationChip";
 import { MapSearch } from "@/components/MapSearch";
 import { PlaceDetails } from "@/components/PlaceDetails";
 import { ViewToggle } from "@/components/ViewToggle";
+import { useLocation } from "@/lib/location-store";
+import { milesBetween } from "@/lib/new-spot";
 import { placesMessage, usePlaces } from "@/lib/places-store";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
@@ -26,6 +29,11 @@ export function SavedMap({
 }) {
   const { loop, getPlace, savedPlaces, places } = usePlan();
   const placesStatus = placesMessage(usePlaces());
+  const location = useLocation();
+  // Hint in the location menu when you're far from everything you saved.
+  const nearestSaveMiles = savedPlaces.length
+    ? Math.min(...savedPlaces.map((place) => milesBetween(location.origin, place)))
+    : 0;
   const [selected, setSelected] = useState<Place | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -58,6 +66,7 @@ export function SavedMap({
         route={route}
         selectedId={selected?.id}
         focus={focus}
+        userLocation={location.isLive ? location.origin : null}
         onSelect={setSelected}
       />
 
@@ -83,6 +92,13 @@ export function SavedMap({
             setChatStarted(true);
             setChatOpen(true);
             setChatQuestion({ id: Date.now(), text });
+          }}
+        />
+        <LocationChip
+          farFromSaves={nearestSaveMiles > 3 ? nearestSaveMiles : undefined}
+          onPretendSoHo={() => {
+            setSelected(null);
+            setFocus({ lat: 40.7233, lng: -74.003, zoom: 15, key: Date.now() });
           }}
         />
         {showRoute ? (

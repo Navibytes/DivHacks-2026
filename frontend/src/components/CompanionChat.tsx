@@ -24,6 +24,7 @@ import {
   type Intent,
 } from "@/lib/companion";
 import { askLoopie } from "@/lib/api";
+import { useLocation } from "@/lib/location-store";
 import { isSpeechSupported, listen } from "@/lib/speech";
 import { speak, stopSpeaking } from "@/lib/voice";
 import { usePlan, type LoopAnswers } from "@/lib/plan-store";
@@ -60,6 +61,7 @@ export function CompanionChat({
   onShowRoute: () => void;
 }) {
   const plan = usePlan();
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([{ id: 0, from: "loopie", text: GREETING }]);
   const [step, setStep] = useState<Step>("start");
   const [typing, setTyping] = useState(false);
@@ -197,6 +199,8 @@ export function CompanionChat({
     const ai = await askLoopie({
       messages: [...messages, { from: "user" as const, text }].map(({ from, text }) => ({ from, text })),
       places: plan.places.map(toChatPlace),
+      area: location.area,
+      liveLocation: location.isLive,
     });
     setTyping(false);
 

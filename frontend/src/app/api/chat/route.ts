@@ -19,7 +19,7 @@ How to answer:
 - If the user wants you to plan an outing, itinerary, day or loop, set "action" to "start_itinerary" and reply with one short, excited sentence; the app will then ask about time, people and budget.
 - Otherwise set "action" to "none".
 - If the question has nothing to do with going out in NYC, answer in one friendly line and steer back to their saved spots.
-- Distances are from the user's current area (SoHo). estimatedCost is in USD per person; 0 means free.`;
+- estimatedCost is in USD per person; 0 means free.`;
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     const ai = new GoogleGenAI({ apiKey });
     const interaction = await ai.interactions.create({
       model: MODEL,
-      system_instruction: `${SYSTEM_PROMPT}\n\nSPOTS:\n${JSON.stringify(places.map(compactPlace))}`,
+      system_instruction: `${SYSTEM_PROMPT}\n\n${whereUserIs(body)}\n\nSPOTS:\n${JSON.stringify(places.map(compactPlace))}`,
       input: messages.map((turn) => ({
         type: turn.from === "user" ? ("user_input" as const) : ("model_output" as const),
         content: [{ type: "text" as const, text: turn.text }],
@@ -75,6 +75,13 @@ export async function POST(request: Request) {
     console.error("[api/chat] Gemini request failed:", error);
     return Response.json({ error: "Gemini request failed" }, { status: 502 });
   }
+}
+
+function whereUserIs(body: AiChatRequest) {
+  const area = typeof body.area === "string" && body.area.trim() ? body.area.trim().slice(0, 60) : "SoHo";
+  return body.liveLocation
+    ? `The user is currently in ${area} (from their phone's location). Each spot's "distance" is measured from where they are right now.`
+    : `Treat the user as being in ${area}. Each spot's "distance" is measured from there.`;
 }
 
 /** Keep the last few turns, trim long text, and start the history on a user turn. */

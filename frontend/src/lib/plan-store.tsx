@@ -5,6 +5,7 @@ import { demoLoop } from "@/data/loops";
 import { statusLabel } from "@/data/places";
 import { requestLoop } from "@/lib/api";
 import { buildLocalLoop } from "@/lib/local-planner";
+import { useLocation } from "@/lib/location-store";
 import { usePlaces } from "@/lib/places-store";
 import { formatClock, parseClock } from "@/lib/time";
 import type { BudgetOption, GroupSize, LoopPlan, Place, TimeOption } from "@/lib/types";
@@ -37,8 +38,8 @@ const WALK_MINUTES_GUESS = 8;
 const VISIT_MINUTES_GUESS = 40;
 
 export function PlanProvider({ children }: { children: React.ReactNode }) {
-  // No location picker yet, so plans start from SoHo.
-  const neighborhood = "SoHo";
+  // Plans start from wherever you are (GPS), or SoHo in "pretend" mode.
+  const neighborhood = useLocation().area;
   const [loop, setLoop] = useState<LoopPlan>(demoLoop);
   const [isPlanning, setIsPlanning] = useState(false);
 
@@ -105,7 +106,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       },
       isInLoop: (placeId) => loop.stops.some((stop) => stop.placeId === placeId),
     };
-  }, [places, savedPlaces, getPlace, addSpot, loop, isPlanning]);
+  }, [places, savedPlaces, getPlace, addSpot, loop, isPlanning, neighborhood]);
 
   return <PlanContext.Provider value={value}>{children}</PlanContext.Provider>;
 }

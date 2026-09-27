@@ -14,6 +14,7 @@ import {
   nearestNeighborhood,
 } from "@/lib/new-spot";
 import { applyVideoDetails, detailsFromVideo } from "@/lib/enrich";
+import { formatMiles, useLocation } from "@/lib/location-store";
 import type { Place, PlaceKind } from "@/lib/types";
 import { videoFromLink } from "@/lib/video";
 
@@ -243,8 +244,16 @@ export function PlacesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [places]);
 
-  // Newest saves first, like a feed.
-  const all = useMemo(() => [...addedSpots, ...places], [addedSpots, places]);
+  // Newest saves first, like a feed. Distances are measured live from where you are.
+  const here = useLocation().origin;
+  const all = useMemo(
+    () =>
+      [...addedSpots, ...places].map((place) => ({
+        ...place,
+        distance: formatMiles(milesBetween(here, place)),
+      })),
+    [addedSpots, places, here],
+  );
   const addSpot = useCallback((place: Place) => setAddedSpots((current) => [place, ...current]), []);
 
   const value = useMemo<PlacesState>(

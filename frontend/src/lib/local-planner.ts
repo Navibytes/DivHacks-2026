@@ -1,3 +1,4 @@
+import { milesBetween } from "@/lib/new-spot";
 import { formatClock, parseClock } from "@/lib/time";
 import type { BudgetOption, LoopPlan, Place, TimeOption } from "@/lib/types";
 
@@ -8,7 +9,8 @@ import type { BudgetOption, LoopPlan, Place, TimeOption } from "@/lib/types";
 const STOPS_FOR_TIME: Record<TimeOption, number> = { 1: 2, 2: 3, 3: 3, 4: 4 };
 const MAX_COST: Record<BudgetOption, number> = { free: 0, under20: 20, under40: 40, any: Infinity };
 const VISIT_MINUTES = 40;
-const WALK_MINUTES = 8;
+const WALK_MINUTES_PER_MILE = 20; // ~3 mph
+const MIN_WALK_MINUTES = 3;
 const START_TIME = "12:00 PM";
 
 const miles = (place: Place) => parseFloat(place.distance) || 99;
@@ -28,7 +30,10 @@ export function buildLocalLoop(
 
   let clock = parseClock(START_TIME);
   const stops = picked.map((place, index) => {
-    const travel = index === 0 ? 0 : WALK_MINUTES;
+    const previous = picked[index - 1];
+    const travel = previous
+      ? Math.max(MIN_WALK_MINUTES, Math.round(milesBetween(previous, place) * WALK_MINUTES_PER_MILE))
+      : 0;
     clock += travel;
     const stop = {
       id: `stop-${place.id}`,
@@ -46,7 +51,7 @@ export function buildLocalLoop(
   return {
     id: `local-${Date.now()}`,
     neighborhood,
-    totalMinutes: stops.length * VISIT_MINUTES + (stops.length - 1) * WALK_MINUTES,
+    totalMinutes: stops.reduce((sum, stop) => sum + stop.duration + stop.travelMinutesFromPrevious, 0),
     estimatedCostMin: Math.min(...costs),
     estimatedCostMax: costs.reduce((sum, cost) => sum + cost, 0),
     stops,
