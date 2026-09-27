@@ -78,8 +78,14 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
           minDelay,
         ]);
         // Backend planner first; otherwise plan from the places we actually have.
+        // Only trust the backend's loop if every stop is a place we actually have
+        // (the placeholder planner returns demo ids); otherwise plan locally.
+        const backendLoopIsReal =
+          apiLoop && apiLoop.stops.length > 0 && apiLoop.stops.every((stop) => getPlace(stop.placeId));
         const next =
-          apiLoop ?? buildLocalLoop(savedPlaces, { timeHours, budget }, neighborhood) ?? emptyLoop(neighborhood);
+          (backendLoopIsReal ? apiLoop : null) ??
+          buildLocalLoop(savedPlaces, { timeHours, budget }, neighborhood) ??
+          emptyLoop(neighborhood);
         setLoop(next);
         setIsPlanning(false);
         return next;
