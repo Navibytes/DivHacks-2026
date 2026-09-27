@@ -107,6 +107,7 @@ export function MapSearch({
           </svg>
           <span className="sr-only">Search places, neighborhoods, or ask Loopie</span>
           <input
+            id="map-search-input"
             role="combobox"
             aria-expanded={showList}
             aria-controls="map-search-results"

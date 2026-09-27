@@ -80,9 +80,11 @@ export type ChatPlace = Pick<
 export type AiChatRequest = {
   messages: ChatTurn[];
   places: ChatPlace[];
-  /** Where the user is ("Williamsburg", "Nearby"), and whether it's their real position. */
+  /** Where the user is planning from ("Williamsburg"), and how we know. */
   area?: string;
   liveLocation?: boolean;
+  /** True when the user picked this area to explore (not their current position). */
+  chosenArea?: boolean;
 };
 
 export type AiChatReply = {

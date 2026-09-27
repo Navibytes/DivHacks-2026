@@ -66,7 +66,7 @@ export function SavedMap({
         route={route}
         selectedId={selected?.id}
         focus={focus}
-        userLocation={location.origin}
+        userLocation={location.here}
         onSelect={setSelected}
       />
 
@@ -85,6 +85,7 @@ export function SavedMap({
           }}
           onPickArea={(area) => {
             setSelected(null);
+            location.chooseArea(area);
             setFocus({ lat: area.lat, lng: area.lng, zoom: 15, key: Date.now() });
           }}
           onAskLoopie={(text) => {
@@ -94,7 +95,12 @@ export function SavedMap({
             setChatQuestion({ id: Date.now(), text });
           }}
         />
-        <LocationChip farFromSaves={nearestSaveMiles > 3 ? nearestSaveMiles : undefined} />
+        <LocationChip
+          farFromSaves={nearestSaveMiles > 3 ? nearestSaveMiles : undefined}
+          onBackToMe={() => {
+            if (location.here) setFocus({ ...location.here, zoom: 15, key: Date.now() });
+          }}
+        />
         {showRoute ? (
           <div className="flex items-center justify-between rounded-[12px] bg-ink px-3 py-2 text-[13px] text-white">
             <span>

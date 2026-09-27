@@ -1,22 +1,33 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { areaName, type Point } from "@/lib/geo";
+import { areaName, type Area, type Point } from "@/lib/geo";
 
-// Where the user is, from the browser's location (GPS). Nothing is assumed:
-// until location is known, `origin` is null and distances simply aren't shown.
-// `area` is the real neighborhood name for that spot (OpenStreetMap lookup).
+// Where the app plans from. By default that's the user's real location (GPS);
+// they can also choose an area to explore ("I'm heading to Park Slope"), and
+// then distances, "near me", Loopie and loops are all measured from there.
+// Nothing is assumed: with no GPS and no chosen area, `origin` is null and
+// distances simply aren't shown. Area names come from OpenStreetMap.
 
 export type LocationStatus = "locating" | "on" | "denied" | "unavailable";
 
 type LocationState = {
-  /** Where the user is, or null if unknown (not allowed / not available yet). */
+  /** Where distances are measured from: the chosen area, else your GPS position, else null. */
   origin: Point | null;
-  /** Neighborhood name for `origin`, e.g. "Williamsburg"; null until known. */
+  /** Name for `origin`, e.g. "Williamsburg"; null until known. */
   area: string | null;
+  /** "gps" = your real location; "chosen" = an area you picked to explore. */
+  source: "gps" | "chosen" | null;
+  /** Your real position (for the "you are here" dot), regardless of any chosen area. */
+  here: Point | null;
+  /** GPS status. */
   status: LocationStatus;
   /** Ask for location again (e.g. after the user allowed it in settings). */
   retry: () => void;
+  /** Explore an area instead of your current location. */
+  chooseArea: (area: Area) => void;
+  /** Go back to your real location. */
+  backToMyLocation: () => void;
 };
 
 const LocationContext = createContext<LocationState | null>(null);
@@ -25,6 +36,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<LocationStatus>("locating");
   const [origin, setOrigin] = useState<Point | null>(null);
   const [area, setArea] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<Area | null>(null);
   const watchId = useRef<number | null>(null);
 
   const start = useCallback(() => {
@@ -75,9 +87,33 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     };
   }, [origin]);
 
+  const chooseArea = useCallback((next: Area) => setChosen(next), []);
+  const backToMyLocation = useCallback(() => setChosen(null), []);
+
   const value = useMemo<LocationState>(
-    () => ({ origin, area: origin ? area : null, status, retry: start }),
-    [origin, area, status, start],
+    () =>
+      chosen
+        ? {
+            origin: { lat: chosen.lat, lng: chosen.lng },
+            area: chosen.name,
+            source: "chosen",
+            here: origin,
+            status,
+            retry: start,
+            chooseArea,
+            backToMyLocation,
+          }
+        : {
+            origin,
+            area: origin ? area : null,
+            source: origin ? "gps" : null,
+            here: origin,
+            status,
+            retry: start,
+            chooseArea,
+            backToMyLocation,
+          },
+    [chosen, origin, area, status, start, chooseArea, backToMyLocation],
   );
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }

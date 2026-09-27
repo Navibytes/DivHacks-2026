@@ -79,6 +79,9 @@ export async function POST(request: Request) {
 
 function whereUserIs(body: AiChatRequest) {
   const area = typeof body.area === "string" && body.area.trim() ? body.area.trim().slice(0, 60) : "";
+  if (body.chosenArea && area) {
+    return `The user is planning to go to ${area} and wants ideas there. Each spot's "distance" is measured from the middle of ${area}.`;
+  }
   if (!body.liveLocation) {
     return "The user's location is unknown, so there are no distances. Don't claim how close anything is.";
   }

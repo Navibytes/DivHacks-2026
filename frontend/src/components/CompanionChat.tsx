@@ -205,6 +205,7 @@ export function CompanionChat({
       places: plan.places.map(toChatPlace),
       area: location.area ?? undefined,
       liveLocation: location.origin !== null,
+      chosenArea: location.source === "chosen",
     });
     setTyping(false);
 
