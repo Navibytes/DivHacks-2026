@@ -246,6 +246,7 @@ function makePlace({ analysis, caption, source, url, creator }) {
     estimatedCost: category === "coffee" ? 7 : category === "food" ? 15 : 0,
     saved: true,
     source,
+    mapLink: typeof analysis.mapLink === "string" ? analysis.mapLink : undefined,
     lat: analysis.latitude,
     lng: analysis.longitude,
     image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80",
@@ -278,7 +279,8 @@ async function savePlace(place) {
     lat: place.lat,
     lng: place.lng,
     link: videoLink,
-    map_link: mapUrl.toString(),
+    // Google's own place link when Google Places found it, else a Maps search link.
+    map_link: place.mapLink || mapUrl.toString(),
   };
   async function findByVideoLink() {
     const lookup = new URL(baseUrl);
