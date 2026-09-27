@@ -54,13 +54,13 @@ export function CompanionButton({
         onClick={onToggle}
         aria-label={open ? "Close chat with Loopie" : "Chat with Loopie"}
         aria-expanded={open}
-        className={`grid h-16 w-16 place-items-center rounded-full border border-line bg-paper shadow-[0_4px_14px_rgba(35,26,17,0.16)] hover:border-red ${
+        className={`grid place-items-center rounded-full drop-shadow-[0_3px_6px_rgba(35,26,17,0.28)] transition-transform hover:scale-105 ${
           nudging && !open ? "companion-bounce" : ""
-        } ${open ? "border-red" : ""}`}
+        }`}
       >
-        {/* Static Loopie inside the button; the whole button does the bouncing. */}
+        {/* Static Loopie; the whole button does the bouncing. */}
         <span className="loopie-still">
-          <Loopie state={nudging || open ? "happy" : "idle"} size={52} />
+          <Loopie state={nudging || open ? "happy" : "idle"} size={72} />
         </span>
       </button>
     </div>

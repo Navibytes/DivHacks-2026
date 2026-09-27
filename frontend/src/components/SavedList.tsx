@@ -6,6 +6,7 @@ import { FilterChip } from "@/components/FilterChip";
 import { PlaceCard } from "@/components/PlaceCard";
 import { PlaceDetails } from "@/components/PlaceDetails";
 import { ViewToggle } from "@/components/ViewToggle";
+import { placesMessage, usePlaces } from "@/lib/places-store";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
 
@@ -13,6 +14,7 @@ const filters = ["All", "Food", "Coffee", "Arts"] as const;
 
 export function SavedList({ onShowMap }: { onShowMap: () => void }) {
   const { savedPlaces } = usePlan();
+  const placesStatus = placesMessage(usePlaces());
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
   const [selected, setSelected] = useState<Place | null>(null);
@@ -48,7 +50,7 @@ export function SavedList({ onShowMap }: { onShowMap: () => void }) {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-[28px] font-extrabold tracking-tight">Saved spots</h1>
-          <p className="mt-1 text-[14px] text-muted">{savedPlaces.length} places you wanted to try</p>
+          <p className="mt-1 text-[14px] text-muted">{savedPlaces.length} {savedPlaces.length === 1 ? "place" : "places"} you wanted to try</p>
         </div>
         <ViewToggle view="list" onToggle={onShowMap} />
       </header>
@@ -83,6 +85,11 @@ export function SavedList({ onShowMap }: { onShowMap: () => void }) {
         ))}
       </div>
       <div className="space-y-3">
+        {placesStatus ? (
+          <p role="status" className="text-[14px] text-muted">
+            {placesStatus}
+          </p>
+        ) : null}
         {places.map((place) => (
           <PlaceCard key={place.id} place={place} onClick={() => setSelected(place)} />
         ))}

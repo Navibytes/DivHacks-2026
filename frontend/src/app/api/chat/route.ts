@@ -4,7 +4,8 @@ import type { AiChatReply, AiChatRequest, ChatPlace, ChatTurn } from "@/lib/comp
 // POST /api/chat: Loopie's brain. Runs on the server so GEMINI_API_KEY never
 // reaches the browser. Set it in frontend/.env.local (see .env.example).
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
+// Flash-Lite: fastest and the most generous free-tier quota (3.8 Flash allows only ~20 requests/day free).
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
 const MAX_TURNS = 12;
 const MAX_TEXT = 500;
 const MAX_PLACES = 60;
@@ -18,7 +19,7 @@ How to answer:
 - If the user wants you to plan an outing, itinerary, day or loop, set "action" to "start_itinerary" and reply with one short, excited sentence; the app will then ask about time, people and budget.
 - Otherwise set "action" to "none".
 - If the question has nothing to do with going out in NYC, answer in one friendly line and steer back to their saved spots.
-- Distances are from the user's current area (SoHo). estimatedCost is in USD per person; 0 means free.`;
+- estimatedCost is in USD per person; 0 means free.`;
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     const ai = new GoogleGenAI({ apiKey });
     const interaction = await ai.interactions.create({
       model: MODEL,
-      system_instruction: `${SYSTEM_PROMPT}\n\nSPOTS:\n${JSON.stringify(places.map(compactPlace))}`,
+      system_instruction: `${SYSTEM_PROMPT}\n\n${whereUserIs(body)}\n\nSPOTS:\n${JSON.stringify(places.map(compactPlace))}`,
       input: messages.map((turn) => ({
         type: turn.from === "user" ? ("user_input" as const) : ("model_output" as const),
         content: [{ type: "text" as const, text: turn.text }],
@@ -74,6 +75,17 @@ export async function POST(request: Request) {
     console.error("[api/chat] Gemini request failed:", error);
     return Response.json({ error: "Gemini request failed" }, { status: 502 });
   }
+}
+
+function whereUserIs(body: AiChatRequest) {
+  const area = typeof body.area === "string" && body.area.trim() ? body.area.trim().slice(0, 60) : "";
+  if (body.chosenArea && area) {
+    return `The user is planning to go to ${area} and wants ideas there. Each spot's "distance" is measured from the middle of ${area}.`;
+  }
+  if (!body.liveLocation) {
+    return "The user's location is unknown, so there are no distances. Don't claim how close anything is.";
+  }
+  return `The user is currently ${area ? `in ${area}` : "at their phone's location"}. Each spot's "distance" is measured from where they are right now.`;
 }
 
 /** Keep the last few turns, trim long text, and start the history on a user turn. */

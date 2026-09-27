@@ -1,3 +1,4 @@
+import "./load-env.js";
 import { createServer } from "node:http";
 import { handleRequest } from "../routes/index.js";
 

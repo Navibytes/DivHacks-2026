@@ -1,5 +1,5 @@
 import type { Place } from "@/lib/types";
-import { categoryLabel, costLabel, sourceLabel, statusLabel } from "@/data/places";
+import { categoryLabel, placeMeta, priceLabel, sourceLabel, statusLabel } from "@/data/places";
 
 export function PlaceCard({
   place,
@@ -35,14 +35,14 @@ export function PlaceCard({
       <div className="min-w-0 flex-1">
         <p className="truncate text-[16px] font-semibold text-ink">{place.name}</p>
         <p className="mt-1 text-[13px] text-muted">
-          {place.neighborhood} · {place.distance}
+          {placeMeta(place, { category: false })}
         </p>
         {variant === "nearby" ? (
           <p className="mt-2 text-[12px] font-semibold text-red">Saved</p>
         ) : variant === "find" ? (
           <>
             <p className="mt-2 text-[12px] text-muted">
-              {categoryLabel(place.category)} · {costLabel(place.estimatedCost)}
+              {categoryLabel(place.category)} · {priceLabel(place)}
             </p>
             <p className="mt-1 text-[12px] font-semibold text-red">{statusLabel(place)}</p>
           </>

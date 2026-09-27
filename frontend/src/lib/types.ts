@@ -31,14 +31,19 @@ export type VibeOption =
 export interface SourceVideo {
   platform: "tiktok" | "instagram";
   url: string;
+  /** "@handle", or "" when the link doesn't say (Instagram links don't). */
   creator: string;
 }
 
 export interface Place {
   id: string;
   name: string;
+  location?: string;
   neighborhood: string;
   category: PlaceCategory;
+  /** Google-style price level: 0 (free) through 4 (very expensive), unknown when null. */
+  priceLevel?: 0 | 1 | 2 | 3 | 4 | null;
+  transcript?: string;
   distance: string;
   estimatedCost: number;
   saved: boolean;
@@ -49,6 +54,20 @@ export interface Place {
   kind: PlaceKind;
   description?: string;
   video?: SourceVideo;
+  // Optional extras. The UI only shows the ones that are present.
+  address?: string;
+  /** Opening hours or, for events, when it's happening ("Today · 11 AM – 6 PM"). */
+  hours?: string;
+  rating?: { score: number; count: number };
+  /** Short facts like "Vegan" or "Cash only" (the first 3 are shown). */
+  tags?: string[];
+  mustTry?: string;
+  /** ISO date the user saved it. */
+  savedAt?: string;
+  /** Original post or website the spot came from. */
+  link?: string;
+  /** Google Maps link for the place (Supabase `map_link`). */
+  mapLink?: string;
 }
 
 export interface LoopStop {
@@ -75,6 +94,8 @@ export interface LoopRequest {
   neighborhood: string;
   timeHours: TimeOption;
   groupSize: GroupSize;
+  /** The user's current position, when known. */
+  origin?: { lat: number; lng: number };
   budget: BudgetOption;
   vibes: VibeOption[];
   savedPlaceIds: string[];

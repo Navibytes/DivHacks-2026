@@ -1,5 +1,6 @@
 import type { Place } from "@/lib/types";
 
+// Built-in demo spots, used when Supabase isn't configured (see lib/places-store.tsx).
 export const places: Place[] = [
   {
     id: "matchaful",
@@ -22,6 +23,9 @@ export const places: Place[] = [
       url: "https://www.tiktok.com/@takestwoeggs/video/7467688839713279263",
       creator: "@takestwoeggs",
     },
+    tags: ["Plant-based", "Matcha bar"],
+    mustTry: "Iced strawberry matcha",
+    savedAt: "2026-09-20",
   },
   {
     id: "housing-works",
@@ -44,6 +48,9 @@ export const places: Place[] = [
       url: "https://www.tiktok.com/@sahnahh/video/7364048241320693038",
       creator: "@sahnahh",
     },
+    address: "126 Crosby St",
+    tags: ["Used books", "Café", "Supports charity"],
+    savedAt: "2026-09-12",
   },
   {
     id: "cafe-reggio",
@@ -66,6 +73,10 @@ export const places: Place[] = [
       url: "https://www.tiktok.com/@food52/video/7440558937432214815",
       creator: "@food52",
     },
+    address: "119 MacDougal St",
+    tags: ["Since 1927", "Historic café"],
+    mustTry: "The original cappuccino",
+    savedAt: "2026-08-30",
   },
   {
     id: "little-island",
@@ -88,6 +99,9 @@ export const places: Place[] = [
       url: "https://www.tiktok.com/@littleislandnyc/video/7435011326809787679",
       creator: "@littleislandnyc",
     },
+    address: "Pier 55, Hudson River Park",
+    tags: ["Free", "Park", "Sunset views"],
+    savedAt: "2026-09-01",
   },
   {
     id: "the-strand",
@@ -110,6 +124,9 @@ export const places: Place[] = [
       url: "https://www.tiktok.com/@danielleturk1/video/7528549300461260087",
       creator: "@danielleturk1",
     },
+    address: "828 Broadway",
+    tags: ["New & used books", "$1 carts"],
+    savedAt: "2026-09-24",
   },
   {
     id: "joes-pizza",
@@ -126,12 +143,16 @@ export const places: Place[] = [
       "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&q=80",
     kind: "saved",
     description:
-      "Classic New York slice counter on Carmine St. Cash-friendly, quick, and famous from Spider-Man 2.",
+      "Classic New York slice counter on Carmine St. Quick, no-frills, and famous from Spider-Man 2.",
     video: {
       platform: "tiktok",
       url: "https://www.tiktok.com/@thebingbuzz/video/7196124214221360427",
       creator: "@thebingbuzz",
     },
+    address: "7 Carmine St",
+    tags: ["Slice shop", "Quick bite"],
+    mustTry: "Plain cheese slice",
+    savedAt: "2026-09-25",
   },
   {
     id: "washington-square",
@@ -148,6 +169,7 @@ export const places: Place[] = [
       "https://images.unsplash.com/photo-1555109307-f7d9da25c244?w=800&q=80",
     kind: "find",
     description: "The Village’s living room: the arch, the fountain, chess players, and street musicians all afternoon.",
+    tags: ["Free", "Park", "Street music"],
   },
   {
     id: "soho-art-market",
@@ -164,6 +186,8 @@ export const places: Place[] = [
       "https://images.unsplash.com/photo-1547891654-e66ed7ebb968?w=800&q=80",
     kind: "event",
     description: "Local artists selling prints, ceramics, and jewelry on the sidewalk. Free to browse.",
+    hours: "Today · 11 AM – 6 PM",
+    tags: ["Free", "Local artists"],
   },
   {
     id: "nyc-parks-event",
@@ -180,19 +204,10 @@ export const places: Place[] = [
       "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80",
     kind: "event",
     description: "Free outdoor event from NYC Parks happening today near SoHo.",
+    hours: "Today · 2 PM – 5 PM",
+    tags: ["Free", "Outdoors"],
   },
 ];
-
-export const savedPlaces = places.filter((place) => place.saved);
-
-export const nearbySaved = savedPlaces.slice(0, 3);
-
-// Events + LocalLoop discoveries the user hasn't saved yet (New Finds tab).
-export const newFinds = places.filter((place) => !place.saved);
-
-export function getPlace(id: string) {
-  return places.find((place) => place.id === id);
-}
 
 export function sourceLabel(source: Place["source"]) {
   if (source === "tiktok") return "Saved from TikTok";
@@ -216,8 +231,20 @@ export function costLabel(cost: number) {
   return `~$${cost}`;
 }
 
+/** Real price level ($–$$$) when we have one, otherwise the cost estimate. */
+export function priceLabel(place: Pick<Place, "estimatedCost" | "priceLevel">) {
+  return place.priceLevel ? "$".repeat(place.priceLevel) : costLabel(place.estimatedCost);
+}
+
 export function statusLabel(place: Place) {
   if (place.saved) return "Saved by you";
   if (place.kind === "event") return "Happening today";
   return "LocalLoop find";
+}
+
+/** "Coffee · Williamsburg · 0.3 mi", skipping whatever isn't known yet. */
+export function placeMeta(place: Place, { category = true }: { category?: boolean } = {}) {
+  return [category ? categoryLabel(place.category) : "", place.neighborhood, place.distance]
+    .filter(Boolean)
+    .join(" · ");
 }

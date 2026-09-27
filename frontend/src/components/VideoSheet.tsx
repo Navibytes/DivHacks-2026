@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { embedUrl, platformName } from "@/lib/video";
+import { embedUrl, platformName, videoCredit } from "@/lib/video";
 import type { Place, SourceVideo } from "@/lib/types";
 
 // Full-screen player for the TikTok/Instagram post a spot was saved from.
@@ -35,7 +35,7 @@ export function VideoSheet({
           <div className="min-w-0">
             <p className="truncate text-[16px] font-semibold">{place.name}</p>
             <p className="text-[13px] text-white/70">
-              {video.creator} on {platformName(video)}
+              {videoCredit(video)}
             </p>
           </div>
           <button

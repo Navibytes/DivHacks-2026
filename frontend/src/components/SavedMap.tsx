@@ -6,8 +6,13 @@ import { CompanionButton } from "@/components/CompanionButton";
 import { CompanionChat } from "@/components/CompanionChat";
 import { MapBottomSheet } from "@/components/MapBottomSheet";
 import { MapCanvas } from "@/components/MapCanvas";
+import { LocationChip } from "@/components/LocationChip";
+import { MapSearch } from "@/components/MapSearch";
 import { PlaceDetails } from "@/components/PlaceDetails";
 import { ViewToggle } from "@/components/ViewToggle";
+import { useLocation } from "@/lib/location-store";
+import { milesBetween } from "@/lib/geo";
+import { placesMessage, usePlaces } from "@/lib/places-store";
 import { usePlan } from "@/lib/plan-store";
 import type { Place } from "@/lib/types";
 
@@ -22,24 +27,27 @@ export function SavedMap({
   onHideRoute: () => void;
   onShowList: () => void;
 }) {
-  const { loop, getPlace, savedPlaces } = usePlan();
-  const [query, setQuery] = useState("");
+  const { loop, getPlace, savedPlaces, places } = usePlan();
+  const placesStatus = placesMessage(usePlaces());
+  const location = useLocation();
+  // Hint in the location menu when you're far from everything you saved.
+  const here = location.origin;
+  const nearestSaveMiles =
+    here && savedPlaces.length ? Math.min(...savedPlaces.map((place) => milesBetween(here, place))) : 0;
   const [selected, setSelected] = useState<Place | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   // Keep the chat mounted after first open so the conversation survives closing it.
   const [chatStarted, setChatStarted] = useState(false);
+  const [chatQuestion, setChatQuestion] = useState<{ id: number; text: string }>();
+  const [focus, setFocus] = useState<{ lat: number; lng: number; zoom: number; key: number }>();
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return savedPlaces.filter(
-      (place) =>
-        !q ||
-        place.neighborhood.toLowerCase().includes(q) ||
-        place.name.toLowerCase().includes(q),
-    );
-  }, [query, savedPlaces]);
+  // All saved spots, plus a picked event/find so its pin shows while selected.
+  const visible = useMemo(
+    () => (selected && !savedPlaces.includes(selected) ? [...savedPlaces, selected] : savedPlaces),
+    [savedPlaces, selected],
+  );
 
   const route = useMemo(
     () =>
@@ -57,30 +65,47 @@ export function SavedMap({
         places={visible}
         route={route}
         selectedId={selected?.id}
+        focus={focus}
+        userLocation={location.here}
         onSelect={setSelected}
       />
 
       <div className="absolute inset-x-4 top-4 z-[1000] space-y-3">
-        <div className="flex gap-2">
-          <label className="flex flex-1 items-center gap-2 rounded-[16px] border border-line bg-paper px-4 shadow-[0_1px_2px_rgba(35,26,17,0.06)]">
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0 text-muted">
-              <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" />
-              <path d="m16 16 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <span className="sr-only">Search saved spots</span>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search saved spots"
-              className="w-full bg-transparent py-3 text-[15px] text-ink placeholder:text-muted focus:outline-none"
-            />
-          </label>
-          <ViewToggle view="map" onToggle={onShowList} />
-        </div>
+        {placesStatus ? (
+          <p role="status" className="rounded-[12px] bg-paper px-3 py-2 text-[13px] text-muted shadow-[0_1px_2px_rgba(35,26,17,0.06)]">
+            {placesStatus}
+          </p>
+        ) : null}
+        <MapSearch
+          places={places}
+          trailing={<ViewToggle view="map" onToggle={onShowList} />}
+          onPickPlace={(place) => {
+            setChatOpen(false);
+            setSelected(place);
+          }}
+          onPickArea={(area) => {
+            setSelected(null);
+            location.chooseArea(area);
+            setFocus({ lat: area.lat, lng: area.lng, zoom: 15, key: Date.now() });
+          }}
+          onAskLoopie={(text) => {
+            setSelected(null);
+            setChatStarted(true);
+            setChatOpen(true);
+            setChatQuestion({ id: Date.now(), text });
+          }}
+        />
+        <LocationChip
+          farFromSaves={nearestSaveMiles > 3 ? nearestSaveMiles : undefined}
+          onBackToMe={() => {
+            if (location.here) setFocus({ ...location.here, zoom: 15, key: Date.now() });
+          }}
+        />
         {showRoute ? (
           <div className="flex items-center justify-between rounded-[12px] bg-ink px-3 py-2 text-[13px] text-white">
             <span>
-              Your {loop.neighborhood} loop · {loop.stops.length} stops
+              Your {loop.neighborhood ? `${loop.neighborhood} ` : ""}loop · {loop.stops.length}{" "}
+              {loop.stops.length === 1 ? "stop" : "stops"}
             </span>
             <button
               type="button"
@@ -117,6 +142,7 @@ export function SavedMap({
       {chatStarted ? (
         <CompanionChat
           hidden={!chatOpen || Boolean(selected)}
+          question={chatQuestion}
           onClose={() => setChatOpen(false)}
           onSelectPlace={(place) => {
             setChatOpen(false);
@@ -134,7 +160,6 @@ export function SavedMap({
           onClose={() => setAdding(false)}
           onSaved={(place) => {
             setAdding(false);
-            setQuery("");
             setSelected(place);
           }}
         />

@@ -1,4 +1,4 @@
-import { categoryLabel, costLabel } from "@/data/places";
+import { categoryLabel, priceLabel } from "@/data/places";
 import type { LoopStop as LoopStopType, Place } from "@/lib/types";
 
 export function LoopStop({
@@ -52,7 +52,7 @@ export function LoopStop({
               {status === "current" ? "Up next" : stop.reason}
             </p>
             <p className="mt-1.5 text-[13px] text-muted">
-              {categoryLabel(place.category)} · {costLabel(place.estimatedCost)} · {stop.duration} min
+              {categoryLabel(place.category)} · {priceLabel(place)} · {stop.duration} min
             </p>
           </div>
         </article>

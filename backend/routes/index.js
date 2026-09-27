@@ -1,5 +1,6 @@
 import { places } from "../data/places.js";
 import { generateLoop } from "../planner/generateLoop.js";
+import { extractAndSaveSpot } from "../services/spot-extraction.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,6 +58,20 @@ export function handleRequest(req, res) {
       const payload = raw ? JSON.parse(raw) : {};
       json(res, 200, { loop: generateLoop(payload) });
     });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/spots/extract") {
+    collectBody(req)
+      .then((raw) => {
+        const payload = raw ? JSON.parse(raw) : {};
+        return extractAndSaveSpot(payload.link);
+      })
+      .then((place) => json(res, 201, { place }))
+      .catch((error) => {
+        const status = error.statusCode || 500;
+        json(res, status, { error: error.message || "Could not extract this spot." });
+      });
     return;
   }
 

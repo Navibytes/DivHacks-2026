@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { unmatchedVideos } from "@/data/unmatched";
 
-const items = [
-  { href: "/saved", label: "Saved Spots", icon: SavedIcon, match: ["/saved", "/loops"] },
-  { href: "/finds", label: "Unpinned", icon: FindsIcon, match: ["/finds"], badge: unmatchedVideos.length },
-];
-
 export function BottomNav() {
   const pathname = usePathname();
+  const items = [
+    { href: "/saved", label: "Saved Spots", icon: SavedIcon, match: ["/saved", "/loops"] },
+    // Saheb's location queue: saved videos Loopie couldn't pin to a place yet.
+    { href: "/finds", label: "Unpinned", icon: FindsIcon, match: ["/finds"], badge: unmatchedVideos.length },
+  ];
 
   return (
     <nav

@@ -1,9 +1,12 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState } from "react";
-import { demoLoop } from "@/data/loops";
-import { places as demoPlaces, statusLabel } from "@/data/places";
+import { emptyLoop } from "@/data/loops";
+import { statusLabel } from "@/data/places";
 import { requestLoop } from "@/lib/api";
+import { buildLocalLoop } from "@/lib/local-planner";
+import { useLocation } from "@/lib/location-store";
+import { usePlaces } from "@/lib/places-store";
 import { formatClock, parseClock } from "@/lib/time";
 import type { BudgetOption, GroupSize, LoopPlan, Place, TimeOption } from "@/lib/types";
 
@@ -20,6 +23,7 @@ type PlanState = {
   savedPlaces: Place[];
   getPlace: (id: string) => Place | undefined;
   addSpot: (place: Place) => void;
+  /** Where the user is ("Williamsburg"), or "" when unknown. */
   neighborhood: string;
   /** The loop to show: the one the user built, or the demo loop. */
   loop: LoopPlan;
@@ -35,22 +39,22 @@ const WALK_MINUTES_GUESS = 8;
 const VISIT_MINUTES_GUESS = 40;
 
 export function PlanProvider({ children }: { children: React.ReactNode }) {
-  // No location picker yet, so plans start from SoHo.
-  const neighborhood = "SoHo";
-  const [loop, setLoop] = useState<LoopPlan>(demoLoop);
+  // Plans start from wherever you are (GPS); area is "" until known.
+  const { area, origin } = useLocation();
+  const neighborhood = area ?? "";
+  // No loop until the user plans one.
+  const [loop, setLoop] = useState<LoopPlan>(() => emptyLoop());
   const [isPlanning, setIsPlanning] = useState(false);
-  const [places, setPlaces] = useState<Place[]>(demoPlaces);
+
+  // Places live in PlacesProvider (Supabase or demo data); re-exposed here for convenience.
+  const { places, savedPlaces, getPlace, addSpot } = usePlaces();
 
   const value = useMemo<PlanState>(() => {
-    const savedPlaces = places.filter((place) => place.saved);
-    const getPlace = (id: string) => places.find((place) => place.id === id);
-
     return {
       places,
       savedPlaces,
       getPlace,
-      // Newest saves first, like a feed.
-      addSpot: (place) => setPlaces((current) => [place, ...current]),
+      addSpot,
       neighborhood,
       loop,
       isPlanning,
@@ -62,8 +66,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         );
         const [apiLoop] = await Promise.all([
           requestLoop({
-            locationMode: "neighborhood",
+            locationMode: origin ? "gps" : "neighborhood",
             neighborhood,
+            origin: origin ?? undefined,
             timeHours,
             groupSize,
             budget,
@@ -72,7 +77,9 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
           }),
           minDelay,
         ]);
-        const next = apiLoop ?? { ...demoLoop, neighborhood };
+        // Backend planner first; otherwise plan from the places we actually have.
+        const next =
+          apiLoop ?? buildLocalLoop(savedPlaces, { timeHours, budget }, neighborhood) ?? emptyLoop(neighborhood);
         setLoop(next);
         setIsPlanning(false);
         return next;
@@ -103,7 +110,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
       },
       isInLoop: (placeId) => loop.stops.some((stop) => stop.placeId === placeId),
     };
-  }, [places, loop, isPlanning]);
+  }, [places, savedPlaces, getPlace, addSpot, loop, isPlanning, neighborhood, origin]);
 
   return <PlanContext.Provider value={value}>{children}</PlanContext.Provider>;
 }

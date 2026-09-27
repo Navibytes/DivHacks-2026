@@ -87,7 +87,7 @@ export function AddSpotSheet({
               setLink(event.target.value);
               if (status === "error") setStatus("idle");
             }}
-            placeholder="Paste a TikTok, Instagram, or Maps link"
+            placeholder="Paste a TikTok or Instagram video link"
             autoFocus
             disabled={reading}
             className="mt-2 w-full rounded-[12px] border border-line bg-paper px-3 py-3 text-[15px] text-ink placeholder:text-muted disabled:opacity-60"
@@ -103,7 +103,7 @@ export function AddSpotSheet({
         {reading ? (
           <div className="mt-4 flex items-center gap-3 rounded-[16px] bg-soft px-4 py-3" role="status">
             <Loopie state="thinking" size={40} />
-            <p className="text-[14px] font-semibold text-ink">Watching the video for details…</p>
+            <p className="text-[14px] font-semibold text-ink">Finding the place and its address…</p>
           </div>
         ) : null}
 

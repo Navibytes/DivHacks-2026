@@ -164,14 +164,10 @@ input {
   }
 }
 
-/* Map: soften the basemap so it sits on the warm palette */
+/* Map basemap tweaks */
 .leaflet-container {
   font-family: inherit;
   background: var(--soft-red);
-}
-
-.leaflet-tile-pane {
-  filter: grayscale(0.75) sepia(0.25) brightness(1.04) contrast(0.92);
 }
 
 .leaflet-control-zoom a {
@@ -341,4 +337,180 @@ input {
   .typing-dot {
     animation: none;
   }
+}
+
+/* Photo map pins */
+.pp {
+  position: relative;
+  width: var(--pp);
+  height: calc(var(--pp) + 8px);
+  transition: transform 0.15s ease-out;
+}
+
+.leaflet-marker-icon:hover .pp {
+  transform: translateY(-3px) scale(1.06);
+}
+
+.pp-photo {
+  position: absolute;
+  inset: 0 0 8px;
+  z-index: 1;
+  border: 3px solid var(--pp-ring);
+  border-radius: 999px;
+  background: var(--soft-red) center / cover no-repeat;
+  box-shadow: 0 3px 8px rgba(35, 26, 17, 0.28);
+}
+
+.pp-pointer {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: var(--pp-ring);
+  border-radius: 2px;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.pp--saved { --pp-ring: var(--primary-red); }
+.pp--event { --pp-ring: var(--text); }
+.pp--find { --pp-ring: var(--white); }
+.pp--find .pp-pointer { box-shadow: 1px 1px 2px rgba(35, 26, 17, 0.2); }
+
+.pp-badge {
+  position: absolute;
+  right: -3px;
+  bottom: 6px;
+  z-index: 2;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 2px solid var(--white);
+  border-radius: 999px;
+}
+
+.pp-badge--tiktok { background: var(--text); }
+.pp-badge--instagram { background: var(--white); box-shadow: 0 1px 2px rgba(35, 26, 17, 0.25); }
+
+.pp-number,
+.pp-tag {
+  position: absolute;
+  z-index: 2;
+  top: -6px;
+  font: 700 11px/1 var(--font-plus-jakarta), sans-serif;
+  color: var(--white);
+  border: 2px solid var(--white);
+}
+
+.pp-number {
+  left: -4px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--primary-red);
+}
+
+.pp-tag {
+  left: 50%;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: var(--primary-red);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.pp-label {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--white);
+  box-shadow: 0 3px 10px rgba(35, 26, 17, 0.15);
+  color: var(--text);
+  font: 700 13px/1 var(--font-plus-jakarta), sans-serif;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.pp-label i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--primary-red);
+}
+
+.pp-halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--pp) * 2);
+  height: calc(var(--pp) * 2);
+  margin: calc(var(--pp) * -1 - 4px) 0 0 calc(var(--pp) * -1);
+  border-radius: 999px;
+  background: rgba(182, 58, 43, 0.18);
+  animation: pp-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pp-pulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.9; }
+  50% { transform: scale(1); opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-halo { animation: none; }
+  .pp,
+  .leaflet-marker-icon:hover .pp { transition: none; transform: none; }
+}
+
+/* Mic button pulse while Loopie is listening */
+@keyframes mic-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(182, 58, 43, 0.45); }
+  100% { box-shadow: 0 0 0 10px rgba(182, 58, 43, 0); }
+}
+
+.mic-listening {
+  animation: mic-pulse 1.1s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mic-listening { animation: none; }
+}
+
+/* "You are here" dot on the map */
+.you-are-here {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #2f80ed;
+  box-shadow: 0 1px 4px rgba(35, 26, 17, 0.35);
+}
+
+.you-are-here::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 999px;
+  background: rgba(47, 128, 237, 0.2);
+  animation: you-pulse 2s ease-out infinite;
+}
+
+@keyframes you-pulse {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .you-are-here::after { animation: none; }
 }
