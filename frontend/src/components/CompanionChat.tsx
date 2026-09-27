@@ -19,6 +19,7 @@ import {
   type Intent,
 } from "@/lib/companion";
 import { askLoopie } from "@/lib/api";
+import { speak, stopSpeaking } from "@/lib/voice";
 import { usePlan, type LoopAnswers } from "@/lib/plan-store";
 import type { LoopPlan, Place } from "@/lib/types";
 
@@ -56,6 +57,17 @@ export function CompanionChat({
   const [messages, setMessages] = useState<Message[]>([{ id: 0, from: "loopie", text: GREETING }]);
   const [step, setStep] = useState<Step>("start");
   const [typing, setTyping] = useState(false);
+  // Voice (ElevenLabs via /api/speak). Off by default; remembered per browser.
+  const [voiceOn, setVoiceOn] = useState(() => {
+    try {
+      return localStorage.getItem("loopie-voice") === "on";
+    } catch {
+      return false;
+    }
+  });
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const [voiceUnavailable, setVoiceUnavailable] = useState(false);
+  const lastSpokenId = useRef(0);
   const [draft, setDraft] = useState("");
   const answers = useRef<Partial<LoopAnswers>>({});
   const nextId = useRef(1);
@@ -187,6 +199,50 @@ export function CompanionChat({
     return () => clearTimeout(timer);
   }, [question]);
 
+  function playMessage(id: number, text: string) {
+    void speak(text, {
+      onStart: () => setSpeakingId(id),
+      onEnd: () => setSpeakingId((current) => (current === id ? null : current)),
+    }).then((ok) => setVoiceUnavailable(!ok));
+  }
+
+  function toggleVoice() {
+    const next = !voiceOn;
+    setVoiceOn(next);
+    try {
+      localStorage.setItem("loopie-voice", next ? "on" : "off");
+    } catch {
+      // Storage can be blocked; the toggle still works for this session.
+    }
+    if (next) {
+      // Say the latest reply right away (this tap also unlocks audio on phones).
+      const lastLoopie = [...messages].reverse().find((m) => m.from === "loopie");
+      lastSpokenId.current = messages[messages.length - 1]?.id ?? 0;
+      if (lastLoopie) playMessage(lastLoopie.id, lastLoopie.text);
+    } else {
+      stopSpeaking();
+      setSpeakingId(null);
+    }
+  }
+
+  // With voice on, read each new Loopie reply aloud.
+  const playRef = useRef(playMessage);
+  useEffect(() => {
+    playRef.current = playMessage;
+  });
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!voiceOn || !last || last.from !== "loopie" || last.id <= lastSpokenId.current) return;
+    lastSpokenId.current = last.id;
+    playRef.current(last.id, last.text);
+  }, [messages, voiceOn]);
+
+  // Stop talking when the chat is hidden or closed.
+  useEffect(() => {
+    if (hidden) stopSpeaking();
+  }, [hidden]);
+  useEffect(() => () => stopSpeaking(), []);
+
   let choices: { key: string; label: string; onPick: () => void }[] = [];
   if (step === "start") {
     choices = starterPrompts.map((p) => ({ key: p.intent, label: p.label, onPick: () => runIntent(p.intent) }));
@@ -227,11 +283,29 @@ export function CompanionChat({
       className="chat-in absolute bottom-[96px] right-4 z-[1002] flex h-[min(480px,calc(100%-124px))] w-[min(340px,calc(100%-32px))] flex-col overflow-hidden rounded-[20px] border border-line bg-paper shadow-[0_8px_28px_rgba(35,26,17,0.18)]"
     >
       <header className="flex items-center gap-2 border-b border-line px-3 py-2.5">
-        <Loopie state={typing ? "thinking" : "idle"} size={36} />
+        <Loopie state={typing ? "thinking" : speakingId !== null ? "happy" : "idle"} size={36} />
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-bold leading-tight text-ink">Loopie</p>
-          <p className="text-[12px] text-muted">{typing ? "Thinking…" : "Your NYC guide"}</p>
+          <p className="text-[12px] text-muted">
+            {typing
+              ? "Thinking…"
+              : speakingId !== null
+                ? "Speaking…"
+                : voiceOn && voiceUnavailable
+                  ? "Voice unavailable right now"
+                  : "Your NYC guide"}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={toggleVoice}
+          aria-pressed={voiceOn}
+          aria-label={voiceOn ? "Turn off Loopie's voice" : "Turn on Loopie's voice"}
+          title={voiceOn ? "Voice on" : "Voice off"}
+          className={`grid h-8 w-8 place-items-center rounded-full hover:bg-soft ${voiceOn ? "bg-soft text-red" : "text-muted hover:text-red"}`}
+        >
+          <SpeakerIcon on={voiceOn} />
+        </button>
         <button
           type="button"
           onClick={onClose}
@@ -255,9 +329,34 @@ export function CompanionChat({
             </p>
           ) : (
             <div key={message.id} className="max-w-[92%] space-y-2">
-              <p className="w-fit rounded-[16px] rounded-bl-[4px] border border-line bg-paper px-3 py-2 text-[14px] leading-5 text-ink">
-                {message.text}
-              </p>
+              <div className="flex items-end gap-1.5">
+                <p className="w-fit rounded-[16px] rounded-bl-[4px] border border-line bg-paper px-3 py-2 text-[14px] leading-5 text-ink">
+                  {message.text}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (speakingId === message.id) {
+                      stopSpeaking();
+                      setSpeakingId(null);
+                    } else {
+                      playMessage(message.id, message.text);
+                    }
+                  }}
+                  aria-label={speakingId === message.id ? "Stop reading this message" : "Read this message aloud"}
+                  className={`mb-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full ${
+                    speakingId === message.id ? "bg-soft text-red" : "text-muted hover:bg-soft hover:text-red"
+                  }`}
+                >
+                  {speakingId === message.id ? (
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                      <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
+                    </svg>
+                  ) : (
+                    <SpeakerIcon on={false} small />
+                  )}
+                </button>
+              </div>
               {message.places?.length ? (
                 <ul className="space-y-1.5">
                   {message.places.map((place) => (
@@ -383,5 +482,34 @@ function LoopCard({
         </Link>
       </div>
     </div>
+  );
+}
+
+function SpeakerIcon({ on, small = false }: { on: boolean; small?: boolean }) {
+  const size = small ? 13 : 16;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" fillOpacity={on ? 1 : 0} />
+      {on ? (
+        <>
+          <path d="M15.5 9a4 4 0 0 1 0 6" />
+          <path d="M18.5 6.5a7.5 7.5 0 0 1 0 11" />
+        </>
+      ) : small ? (
+        <path d="M15.5 9a4 4 0 0 1 0 6" />
+      ) : (
+        <path d="m16 9.5 5 5m0-5-5 5" />
+      )}
+    </svg>
   );
 }
