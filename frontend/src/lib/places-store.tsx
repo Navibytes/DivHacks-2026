@@ -99,7 +99,7 @@ function coordsFromPoint(value: unknown) {
 
 function toPriceLevel(value: unknown) {
   const level = Number(value);
-  return Number.isInteger(level) && level >= 1 && level <= 3 ? level : undefined;
+  return level === 1 || level === 2 || level === 3 ? level : undefined;
 }
 
 /** Turn a Supabase row into a full Place, filling in what the table doesn't have. */

@@ -3,14 +3,7 @@ import { requestSpotFromLink } from "@/lib/api";
 import type { Place, PlaceCategory, PlaceSource } from "@/lib/types";
 import { videoFromLink } from "@/lib/video";
 
-// Turns a pasted TikTok / Instagram / Google Maps link into a saved Place.
-// The user only pastes the link; everything else is pulled from the post.
-//
-// 1. If the backend is running, it does the extraction (POST /api/spots/extract).
-// 2. Otherwise we do a best-effort version in the browser: read the TikTok
-//    caption via TikTok's public oEmbed endpoint and guess name / type / area
-//    from it. Coordinates are approximate (neighborhood center) until the
-//    backend geocodes real addresses.
+// The server performs extraction and persists the spot before returning it.
 
 export function detectSource(link: string): PlaceSource {
   const url = link.toLowerCase();
@@ -22,34 +15,8 @@ export function detectSource(link: string): PlaceSource {
   return null;
 }
 
-export async function extractSpot(link: string): Promise<Place> {
-  const source = detectSource(link);
-  if (!source) {
-    throw new Error("Paste a TikTok, Instagram, or Google Maps link.");
-  }
-
-  const fromBackend = await requestSpotFromLink(link);
-  if (fromBackend) return fromBackend;
-
-  const post = source === "tiktok" ? await readTikTok(link) : null;
-  const caption = post?.caption ?? "";
-  const name =
-    nameFromCaption(caption) ||
-    nameFromMapsLink(link) ||
-    (post ? `Spot from ${post.creator}` : "New saved spot");
-  const category = categoryFromText(`${name} ${caption}`);
-
-  return buildSpot({
-    name,
-    category,
-    neighborhood: neighborhoodFromText(caption),
-    source,
-    link,
-    description: cleanCaption(caption),
-    address: addressFromCaption(caption),
-    image: post?.thumbnail,
-    creator: post?.creator,
-  });
+export function extractSpot(link: string): Promise<Place> {
+  return requestSpotFromLink(link);
 }
 
 // ---------- reading the post ----------

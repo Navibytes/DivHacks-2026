@@ -38,8 +38,12 @@ export interface SourceVideo {
 export interface Place {
   id: string;
   name: string;
+  location?: string;
   neighborhood: string;
   category: PlaceCategory;
+  /** Google-style price level: 0 (free) through 4 (very expensive), unknown when null. */
+  priceLevel?: 0 | 1 | 2 | 3 | 4 | null;
+  transcript?: string;
   distance: string;
   estimatedCost: number;
   saved: boolean;
@@ -60,8 +64,6 @@ export interface Place {
   mustTry?: string;
   /** ISO date the user saved it. */
   savedAt?: string;
-  /** 1–3, shown as $–$$$ (from Supabase `price_level`). */
-  priceLevel?: number;
   /** Original post or website the spot came from. */
   link?: string;
   /** Google Maps link for the place (Supabase `map_link`). */
