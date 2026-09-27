@@ -40,7 +40,7 @@ export interface Place {
   name: string;
   location?: string;
   neighborhood: string;
-  category: PlaceCategory;
+  category: PlaceCategory | null;
   /** Google-style price level: 0 (free) through 4 (very expensive), unknown when null. */
   priceLevel?: 0 | 1 | 2 | 3 | 4 | null;
   transcript?: string;

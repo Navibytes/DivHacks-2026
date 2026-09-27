@@ -223,7 +223,8 @@ export function categoryLabel(category: Place["category"]) {
   if (category === "books") return "Books";
   if (category === "art") return "Art";
   if (category === "outdoors") return "Outdoors";
-  return "Event";
+  if (category === "event") return "Event";
+  return "Uncategorized";
 }
 
 export function costLabel(cost: number) {

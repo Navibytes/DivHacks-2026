@@ -67,9 +67,13 @@ export function handleRequest(req, res) {
         const payload = raw ? JSON.parse(raw) : {};
         return extractAndSaveSpot(payload.link);
       })
-      .then((place) => json(res, 201, { place }))
+      .then((place) => {
+        console.info("Spot saved:", place.id);
+        json(res, 201, { place });
+      })
       .catch((error) => {
         const status = error.statusCode || 500;
+        console.warn("Spot extraction request failed:", status, error.message);
         json(res, status, { error: error.message || "Could not extract this spot." });
       });
     return;

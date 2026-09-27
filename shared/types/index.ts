@@ -23,7 +23,7 @@ export interface Place {
   name: string;
   location?: string;
   neighborhood: string;
-  category: PlaceCategory;
+  category: PlaceCategory | null;
   priceLevel?: 0 | 1 | 2 | 3 | 4 | null;
   transcript?: string;
   distance: string;

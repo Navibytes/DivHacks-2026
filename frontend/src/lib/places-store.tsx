@@ -112,7 +112,7 @@ function toPlace(row: Record<string, unknown>): Place | null {
     return null;
   }
 
-  const category = categoryFromText(`${typeof rawCategory === "string" ? rawCategory : ""} ${name}`);
+  const category = rawCategory == null ? null : categoryFromText(`${typeof rawCategory === "string" ? rawCategory : ""} ${name}`);
   const priceLevel = toPriceLevel(row.price_level);
   const link = validUrl(row.link);
   // Catalog rows are treated as saved locations unless explicitly marked otherwise.
@@ -129,7 +129,7 @@ function toPlace(row: Record<string, unknown>): Place | null {
     neighborhood: locationText && !locationIsAddress ? locationText : "",
     category,
     distance: "", // computed live from the user's location
-    estimatedCost: priceLevel != null ? PRICE_LEVEL_COST[priceLevel] : CATEGORY_COST[category],
+    estimatedCost: priceLevel != null ? PRICE_LEVEL_COST[priceLevel] : category ? CATEGORY_COST[category] : 0,
     priceLevel,
     saved,
     source: link ? detectSource(link) : null,

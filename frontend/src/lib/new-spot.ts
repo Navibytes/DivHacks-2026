@@ -47,10 +47,11 @@ const CATEGORY_WORDS: [PlaceCategory, RegExp][] = [
   ["art", /art\b|gallery|museum|mural|exhibit/i],
   ["outdoors", /park|garden|island|pier|trail|picnic|outdoor/i],
   ["food", /pizza|food|eat|restaurant|taco|burger|bagel|dumpling|brunch|bakery|slice|ramen|dinner|lunch/i],
+  ["event", /event|festival|concert|show|market|pop[- ]?up/i],
 ];
 
-export function categoryFromText(text: string): PlaceCategory {
-  return CATEGORY_WORDS.find(([, words]) => words.test(text))?.[0] ?? "food";
+export function categoryFromText(text: string): PlaceCategory | null {
+  return CATEGORY_WORDS.find(([, words]) => words.test(text))?.[0] ?? null;
 }
 
 /** Caption without hashtags/mentions, trimmed to a short blurb. */
@@ -65,8 +66,8 @@ export function cleanCaption(caption: string) {
 
 // ---------- building the Place ----------
 
-export function categoryImage(category: PlaceCategory) {
-  return `https://images.unsplash.com/${CATEGORY_IMAGE[category]}?w=800&q=80`;
+export function categoryImage(category: PlaceCategory | null) {
+  return `https://images.unsplash.com/${category ? CATEGORY_IMAGE[category] : "photo-1449824913935-59a10b8d2000"}?w=800&q=80`;
 }
 
 const CATEGORY_IMAGE: Record<PlaceCategory, string> = {

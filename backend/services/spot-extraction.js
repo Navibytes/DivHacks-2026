@@ -99,6 +99,7 @@ async function analyzeVideo(url, caption, postLinks, stage) {
   if (!apiKey) throw fail("Video analysis is not configured: set GEMINI_API_KEY on the backend.", 503);
   const dir = await mkdtemp(join(tmpdir(), "localloop-spot-"));
   const uploadedFileNames = [];
+  let partialSpot;
   try {
     const model = process.env.GEMINI_VIDEO_MODEL || "gemini-3.5-flash-lite";
     async function askGemini(parts, jsonResponse = false) {
@@ -161,10 +162,12 @@ async function analyzeVideo(url, caption, postLinks, stage) {
     const audioJson = audioText.match(/\{[\s\S]*\}/)?.[0];
     if (!audioJson) throw new Error("Gemini did not return structured transcript data");
     let transcriptResult = JSON.parse(audioJson);
+    partialSpot = transcriptResult;
     const transcript = typeof transcriptResult.transcript === "string" ? transcriptResult.transcript : "";
     // Resolve a named venue before downloading screenshots just to find its address.
-    if (transcriptResult.name && normalizedCategory(transcriptResult.category)) {
+    if (transcriptResult.name) {
       transcriptResult = await stage("address-search", () => findPlaceAddress(transcriptResult, caption, transcript, postLinks));
+      partialSpot = transcriptResult;
       if (transcriptResult.location && hasCoordinates(transcriptResult)) return transcriptResult;
     }
 
@@ -186,11 +189,17 @@ async function analyzeVideo(url, caption, postLinks, stage) {
     if (!visualJson) return transcriptResult;
     const visualResult = JSON.parse(visualJson);
     const combined = { ...transcriptResult, ...Object.fromEntries(Object.entries(visualResult).filter(([, value]) => value !== null && value !== "")), transcript };
-    return await stage("address-search-after-screenshots", () => findPlaceAddress(combined, caption, transcript, postLinks));
+    partialSpot = combined;
+    const resolved = await stage("address-search-after-screenshots", () => findPlaceAddress(combined, caption, transcript, postLinks));
+    partialSpot = resolved;
+    return resolved;
   } catch (error) {
+    if (partialSpot && !error.partialSpot) error.partialSpot = partialSpot;
     if (error.statusCode) throw error;
     console.error("Gemini video analysis failed:", error.message);
-    throw fail("Could not analyze the video. Check the link, yt-dlp availability, and Gemini API key.", 502);
+    const failure = fail("Could not analyze the video. Check the link, yt-dlp availability, and Gemini API key.", 502);
+    if (partialSpot) failure.partialSpot = partialSpot;
+    throw failure;
   } finally {
     for (const uploadedFileName of uploadedFileNames) {
       await fetch(`https://generativelanguage.googleapis.com/v1beta/${uploadedFileName}`, {
@@ -224,13 +233,17 @@ function makePlace({ analysis, caption, source, url, creator }) {
       : typeof reportedPrice === "string" && reportedPrice.trim().toLowerCase() === "free"
         ? 0
         : null;
-  const missing = [!name && "place name", !location && "address", !category && "category"].filter(Boolean);
+  const missing = [!name && "place name", !location && "address"].filter(Boolean);
   if (missing.length) {
     console.warn("Spot extraction missing required fields:", missing.join(", "));
-    throw fail(`Could not identify the ${missing.join(" and ")} from this video. Try a post that names or shows the location clearly.`, 422);
+    const error = fail(`Could not identify the ${missing.join(" and ")} from this video. Try a post that names or shows the location clearly.`, 422);
+    error.partialSpot = analysis;
+    throw error;
   }
   if (!hasCoordinates(analysis)) {
-    throw fail(`Identified ${name}, but could not confirm its map coordinates. Please try again.`, 422);
+    const error = fail(`Identified ${name}, but could not confirm its map coordinates. Please try again.`, 422);
+    error.partialSpot = analysis;
+    throw error;
   }
   const description = caption.replace(/[#@][\p{L}\p{N}_.]+/gu, "").replace(/\s+/g, " ").trim().slice(0, 300) || undefined;
   const now = new Date().toISOString();
@@ -351,7 +364,117 @@ export async function extractSpotFromVideo(input) {
 }
 
 export async function extractAndSaveSpot(input) {
-  const place = await extractSpotFromVideo(input);
-  const id = await savePlace(place);
-  return id === place.id ? place : { ...place, id };
+  let partialSpot;
+  try {
+    const place = await extractSpotFromVideo(input);
+    partialSpot = place;
+    const id = await savePlace(place);
+    return id === place.id ? place : { ...place, id };
+  } catch (error) {
+    const link = typeof input === "string" ? input.trim() : "";
+    if (link) {
+      try {
+        const id = await saveUnpinnedLink(link, error.partialSpot || partialSpot);
+        console.warn("Spot queued in unpinned after extraction failure:", id, error.message);
+      } catch (queueError) {
+        console.error("Could not queue failed spot in unpinned:", queueError.message);
+      }
+    }
+    throw error;
+  }
+}
+
+async function saveUnpinnedLink(link, partialSpot = {}) {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !key) throw new Error("Supabase service credentials are unavailable");
+  const table = process.env.SUPABASE_UNPINNED_TABLE || "unpinned";
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) throw new Error("SUPABASE_UNPINNED_TABLE must be a valid table name");
+  const baseUrl = `${supabaseUrl.replace(/\/$/, "")}/rest/v1/${encodeURIComponent(table)}`;
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+
+  // Read the live PostgREST schema so deployments with only a link column keep
+  // working, while any added extraction columns are populated automatically.
+  let available = new Set(["link"]);
+  try {
+    const schemaResponse = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/`, {
+      headers: { ...headers, Accept: "application/openapi+json" },
+    });
+    if (schemaResponse.ok) {
+      const schema = await schemaResponse.json();
+      const definition = schema.definitions?.[table]
+        || schema.definitions?.[`public.${table}`]
+        || schema.components?.schemas?.[table]
+        || schema.components?.schemas?.[`public.${table}`];
+      const columns = Object.keys(definition?.properties || {});
+      if (columns.includes("link")) available = new Set(columns);
+      else console.warn("Supabase schema lookup did not expose the unpinned columns; queueing the link only.");
+    } else {
+      console.warn("Supabase schema lookup failed; queueing the link only:", schemaResponse.status);
+    }
+  } catch (error) {
+    console.warn("Supabase schema lookup failed; queueing the link only:", error.message);
+  }
+  const placeName = typeof partialSpot.name === "string" ? partialSpot.name.trim() : null;
+  const address = typeof partialSpot.location === "string" ? partialSpot.location.trim() : null;
+  const reportedPrice = partialSpot.price_level ?? partialSpot.priceLevel;
+  const priceLevel = Number.isInteger(reportedPrice) && reportedPrice >= 0 && reportedPrice <= 4
+    ? reportedPrice
+    : typeof reportedPrice === "string" && /^\${1,4}$/.test(reportedPrice.trim())
+      ? reportedPrice.trim().length
+      : typeof reportedPrice === "string" && reportedPrice.trim().toLowerCase() === "free" ? 0 : null;
+  const mapUrl = address ? new URL("https://www.google.com/maps/search/") : null;
+  if (mapUrl) {
+    mapUrl.searchParams.set("api", "1");
+    mapUrl.searchParams.set("query", address);
+  }
+  const values = {
+    link,
+    name: placeName || null,
+    location: address || null,
+    category: normalizedCategory(partialSpot.category),
+    price_level: priceLevel,
+    lat: Number.isFinite(partialSpot.latitude) ? partialSpot.latitude : Number.isFinite(partialSpot.lat) ? partialSpot.lat : null,
+    lng: Number.isFinite(partialSpot.longitude) ? partialSpot.longitude : Number.isFinite(partialSpot.lng) ? partialSpot.lng : null,
+    map_link: mapUrl?.toString() || null,
+  };
+  const payload = Object.fromEntries(Object.entries(values).filter(([column]) => available.has(column)));
+  if (!available.has("link")) throw new Error("The unpinned table is missing its link column");
+
+  async function findExisting() {
+    const lookup = new URL(baseUrl);
+    lookup.search = new URLSearchParams({ select: "id", link: `eq.${link}`, limit: "1" }).toString();
+    const response = await fetch(lookup, { headers });
+    if (!response.ok) throw new Error(`Supabase unpinned lookup failed (${response.status})`);
+    const rows = await response.json();
+    return Array.isArray(rows) ? rows[0] : null;
+  }
+
+  async function updateExisting(existing) {
+    const updateUrl = new URL(baseUrl);
+    updateUrl.searchParams.set("id", `eq.${existing.id}`);
+    const response = await fetch(updateUrl, {
+      method: "PATCH",
+      headers: { ...headers, Prefer: "return=minimal" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(`Supabase unpinned update failed (${response.status})`);
+    return String(existing.id);
+  }
+
+  const existing = await findExisting();
+  if (existing) return updateExisting(existing);
+  const response = await fetch(baseUrl, {
+    method: "POST",
+    headers: { ...headers, Prefer: "return=representation" },
+    body: JSON.stringify(payload),
+  });
+  if (response.status === 409) {
+    const racedRow = await findExisting();
+    if (racedRow) return updateExisting(racedRow);
+  }
+  if (!response.ok) throw new Error(`Supabase unpinned insert failed (${response.status})`);
+  const rows = await response.json();
+  if (rows?.[0]?.id == null) throw new Error("Supabase unpinned insert did not return an ID");
+  return String(rows[0].id);
 }
